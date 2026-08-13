@@ -7,6 +7,7 @@ export type Product = {
   fullDescription: string;
   features: string[];
   benefits: string[];
+  thumbnailUrl: string;
   videoUrl: string;
   pdfUrl: string;
   featured: boolean;
@@ -22,6 +23,9 @@ export type Service = {
   shortDescription: string;
   features: string[];
   cta: string;
+  thumbnailUrl: string;
+  videoUrl: string;
+  pdfUrl: string;
   active: boolean;
   displayOrder: number;
 };
@@ -101,8 +105,9 @@ export const seedProducts: Product[] = productNames.map(([name, category, descri
   fullDescription: `${description} MYTM combines modular technology, regional expertise and an implementation model designed for complex enterprise environments.`,
   features: featureMap[category] ?? ["Modular architecture", "API-first integrations", "Operational dashboards", "Enterprise security"],
   benefits: ["Faster time to market", "Lower operational complexity", "Scalable by design"],
-  videoUrl: "",
-  pdfUrl: "",
+  thumbnailUrl: ["AI Financial Analyst", "AI Collection Management"].includes(name) ? "/finova-cover.png" : "",
+  videoUrl: ["AI Financial Analyst", "AI Collection Management"].includes(name) ? "/api/media?key=finova-product-video.mp4" : "",
+  pdfUrl: ["AI Financial Analyst", "AI Collection Management"].includes(name) ? "/api/media?key=finova-product-deck.pptx" : "",
   featured: ["MYTM Cyber Security", "Payment Aggregation Solution", "KSA Government Services Integration", "Lending & Financing Solutions", "CompliClear AML/KYC Solution", "AI Financial Analyst"].includes(name),
   requireLead: true,
   active: true,
@@ -110,10 +115,10 @@ export const seedProducts: Product[] = productNames.map(([name, category, descri
 }));
 
 export const seedServices: Service[] = [
-  { id: 1, name: "Cyber Security", slug: "cyber-security", shortDescription: "Enhance your digital defenses with continuous, comprehensive protection.", features: ["Disaster Recovery", "Endpoint Hardening", "HIDS", "VAPT", "MYTM SIEM", "PCI DSS", "Forensics Investigation"], cta: "Strengthen Your Defenses", active: true, displayOrder: 1 },
-  { id: 2, name: "DevOps", slug: "devops", shortDescription: "Build faster, safer and more reliable technology delivery systems.", features: ["Cloud Infrastructure", "CI/CD", "Deployment Automation", "DevSecOps", "Containerization", "Cloud Optimization"], cta: "Modernize Delivery", active: true, displayOrder: 2 },
-  { id: 3, name: "Resource / Staff Augmentation", slug: "staff-augmentation", shortDescription: "Add proven technology specialists to your teams and critical initiatives.", features: ["Software Engineers", "Mobile Developers", "DevOps Engineers", "QA Engineers", "Business Analysts", "UI/UX Designers", "Project Managers"], cta: "Discuss Resource Requirements", active: true, displayOrder: 3 },
-  { id: 4, name: "Quality Assurance", slug: "quality-assurance", shortDescription: "Ship confident digital experiences with full-spectrum testing expertise.", features: ["Functional Testing", "Automation Testing", "Performance Testing", "Security Testing", "Mobile Testing", "API Testing", "UAT Support"], cta: "Discuss QA Requirements", active: true, displayOrder: 4 },
+  { id: 1, name: "Cyber Security", slug: "cyber-security", shortDescription: "Enhance your digital defenses with continuous, comprehensive protection.", features: ["Disaster Recovery", "Endpoint Hardening", "HIDS", "VAPT", "MYTM SIEM", "PCI DSS", "Forensics Investigation"], cta: "Strengthen Your Defenses", thumbnailUrl: "", videoUrl: "", pdfUrl: "", active: true, displayOrder: 1 },
+  { id: 2, name: "DevOps", slug: "devops", shortDescription: "Build faster, safer and more reliable technology delivery systems.", features: ["Cloud Infrastructure", "CI/CD", "Deployment Automation", "DevSecOps", "Containerization", "Cloud Optimization"], cta: "Modernize Delivery", thumbnailUrl: "", videoUrl: "", pdfUrl: "", active: true, displayOrder: 2 },
+  { id: 3, name: "Resource / Staff Augmentation", slug: "staff-augmentation", shortDescription: "Add proven technology specialists to your teams and critical initiatives.", features: ["Software Engineers", "Mobile Developers", "DevOps Engineers", "QA Engineers", "Business Analysts", "UI/UX Designers", "Project Managers"], cta: "Discuss Resource Requirements", thumbnailUrl: "", videoUrl: "", pdfUrl: "", active: true, displayOrder: 3 },
+  { id: 4, name: "Quality Assurance", slug: "quality-assurance", shortDescription: "Ship confident digital experiences with full-spectrum testing expertise.", features: ["Functional Testing", "Automation Testing", "Performance Testing", "Security Testing", "Mobile Testing", "API Testing", "UAT Support"], cta: "Discuss QA Requirements", thumbnailUrl: "", videoUrl: "", pdfUrl: "", active: true, displayOrder: 4 },
 ];
 
 const caseRows: Array<[string, string, string]> = [

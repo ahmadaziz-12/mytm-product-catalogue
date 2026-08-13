@@ -9,6 +9,7 @@ export const products = sqliteTable("products", {
   fullDescription: text("full_description").notNull(),
   features: text("features", { mode: "json" }).$type<string[]>().notNull(),
   benefits: text("benefits", { mode: "json" }).$type<string[]>().notNull(),
+  thumbnailUrl: text("thumbnail_url").notNull().default(""),
   videoUrl: text("video_url").notNull().default(""),
   pdfUrl: text("pdf_url").notNull().default(""),
   featured: integer("featured", { mode: "boolean" }).notNull().default(false),
@@ -24,6 +25,9 @@ export const services = sqliteTable("services", {
   shortDescription: text("short_description").notNull(),
   features: text("features", { mode: "json" }).$type<string[]>().notNull(),
   cta: text("cta").notNull(),
+  thumbnailUrl: text("thumbnail_url").notNull().default(""),
+  videoUrl: text("video_url").notNull().default(""),
+  pdfUrl: text("pdf_url").notNull().default(""),
   active: integer("active", { mode: "boolean" }).notNull().default(true),
   displayOrder: integer("display_order").notNull().default(0),
 }, (table) => [index("idx_services_active_order").on(table.active, table.displayOrder)]);

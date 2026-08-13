@@ -37,6 +37,18 @@ function serviceImage(index: number) {
   return ["/catalogue-intelligence.png", "/catalogue-enterprise.png", "/catalogue-finance.png", "/catalogue-intelligence.png"][index % 4];
 }
 
+function videoEmbedUrl(url: string) {
+  const youtube = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&?/]+)/);
+  if (youtube) return `https://www.youtube.com/embed/${youtube[1]}`;
+  const vimeo = url.match(/vimeo\.com\/(\d+)/);
+  if (vimeo) return `https://player.vimeo.com/video/${vimeo[1]}`;
+  return "";
+}
+
+function isDirectVideo(url: string) {
+  return url.startsWith("/api/media") || /\.(mp4|webm|ogg)(?:\?|$)/i.test(url);
+}
+
 export default function Showcase() {
   const [catalogue, setCatalogue] = useState<Catalogue>({
     products: seedProducts,
@@ -50,6 +62,7 @@ export default function Showcase() {
   const [selected, setSelected] = useState<SelectedItem>(null);
   const [meetingOpen, setMeetingOpen] = useState(false);
   const [leadProduct, setLeadProduct] = useState<Product | null>(null);
+  const [welcomeOpen, setWelcomeOpen] = useState(true);
 
   useEffect(() => {
     fetch("/api/catalog")
@@ -64,6 +77,23 @@ export default function Showcase() {
       document.body.style.overflow = "";
     };
   }, [selected, meetingOpen, leadProduct]);
+
+  useEffect(() => {
+    let timer: ReturnType<typeof setTimeout>;
+    const activity = () => {
+      clearTimeout(timer);
+      setWelcomeOpen(false);
+      if (!selected && !meetingOpen && !leadProduct) timer = setTimeout(() => setWelcomeOpen(true), 45_000);
+    };
+    if (!welcomeOpen && !selected && !meetingOpen && !leadProduct) timer = setTimeout(() => setWelcomeOpen(true), 45_000);
+    window.addEventListener("pointerdown", activity, true);
+    window.addEventListener("keydown", activity, true);
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener("pointerdown", activity, true);
+      window.removeEventListener("keydown", activity, true);
+    };
+  }, [welcomeOpen, selected, meetingOpen, leadProduct]);
 
   const categories = useMemo(
     () => ["All", ...Array.from(new Set(catalogue.products.map((product) => product.category)))],
@@ -232,6 +262,19 @@ export default function Showcase() {
           }}
         />
       )}
+      {catalogue.settings.welcomeScreen && welcomeOpen && (
+        <section className="idle-experience" aria-label="Welcome to the MYTM catalogue">
+          <video autoPlay muted loop playsInline poster="/finova-cover.png" src="/api/media?key=finova-product-video.mp4" />
+          <div className="idle-shade" />
+          <div className="idle-content">
+            <img src="/mytm-logo.svg" alt="MYTM" />
+            <span>MYTM DIGITAL EXPERIENCE CENTRE</span>
+            <h1>Touch to explore MYTM</h1>
+            <p>Discover our products, services, live demos and product decks.</p>
+            <button onClick={() => setWelcomeOpen(false)}><i /> Touch anywhere to begin</button>
+          </div>
+        </section>
+      )}
     </main>
   );
 }
@@ -240,7 +283,7 @@ function ProductCard({ product, onOpen }: { product: Product; onOpen: () => void
   return (
     <article className="catalog-card">
       <button className="card-image-button" onClick={onOpen} aria-label={`View ${product.name}`}>
-        <img src={productImage(product.category)} alt="" />
+        <img src={product.thumbnailUrl || productImage(product.category)} alt="" />
         <span className="card-category">{product.category}</span>
         {product.featured && <span className="card-featured">Featured</span>}
       </button>
@@ -261,7 +304,7 @@ function ServiceCard({ service, index, onOpen }: { service: Service; index: numb
   return (
     <article className="catalog-card service-catalog-card">
       <button className="card-image-button" onClick={onOpen} aria-label={`View ${service.name}`}>
-        <img src={serviceImage(index)} alt="" />
+        <img src={service.thumbnailUrl || serviceImage(index)} alt="" />
         <span className="card-category">Service</span>
       </button>
       <div className="catalog-card-body">
@@ -275,16 +318,18 @@ function ServiceCard({ service, index, onOpen }: { service: Service; index: numb
 }
 
 function ProductPanel({ product, onClose, onMeeting, onDeck }: { product: Product; onClose: () => void; onMeeting: () => void; onDeck: () => void }) {
+  const embedUrl = product.videoUrl ? videoEmbedUrl(product.videoUrl) : "";
   return (
-    <div className="panel-backdrop" onMouseDown={(event) => event.target === event.currentTarget && onClose()}>
+    <div className="panel-backdrop" role="button" tabIndex={0} aria-label="Close product details" onKeyDown={(event) => event.key === "Escape" && onClose()} onMouseDown={(event) => event.target === event.currentTarget && onClose()}>
       <aside className="detail-panel" role="dialog" aria-modal="true" aria-label={product.name}>
         <button className="panel-close" onClick={onClose} aria-label="Close">×</button>
-        <div className="detail-picture"><img src={productImage(product.category)} alt="" /><span>{product.category}</span></div>
+        <div className="detail-picture"><img src={product.thumbnailUrl || productImage(product.category)} alt="" /><span>{product.category}</span></div>
         <div className="detail-content">
           <small>MYTM PRODUCT</small>
           <h2>{product.name}</h2>
           <p className="detail-lead">{product.shortDescription}</p>
           <p className="detail-description">{product.fullDescription}</p>
+          {product.videoUrl && <section className="detail-media"><h3>Product video</h3>{isDirectVideo(product.videoUrl) ? <video controls playsInline preload="metadata" poster={product.thumbnailUrl || productImage(product.category)} src={product.videoUrl}><track kind="captions" src="/empty.vtt" srcLang="en" label="English" /></video> : embedUrl ? <iframe title={`${product.name} video`} src={embedUrl} allow="autoplay; fullscreen; picture-in-picture" allowFullScreen /> : <a href={product.videoUrl} target="_blank" rel="noreferrer">Watch product video ↗</a>}</section>}
           <section><h3>Key features</h3><div className="feature-list">{product.features.map((feature) => <div key={feature}><i>✓</i><span>{feature}</span></div>)}</div></section>
           <section><h3>Business benefits</h3><div className="benefit-list">{product.benefits.map((benefit) => <span key={benefit}>{benefit}</span>)}</div></section>
         </div>
@@ -295,16 +340,18 @@ function ProductPanel({ product, onClose, onMeeting, onDeck }: { product: Produc
 }
 
 function ServicePanel({ service, onClose, onMeeting }: { service: Service; onClose: () => void; onMeeting: () => void }) {
+  const embedUrl = service.videoUrl ? videoEmbedUrl(service.videoUrl) : "";
   return (
-    <div className="panel-backdrop" onMouseDown={(event) => event.target === event.currentTarget && onClose()}>
+    <div className="panel-backdrop" role="button" tabIndex={0} aria-label="Close service details" onKeyDown={(event) => event.key === "Escape" && onClose()} onMouseDown={(event) => event.target === event.currentTarget && onClose()}>
       <aside className="detail-panel" role="dialog" aria-modal="true" aria-label={service.name}>
         <button className="panel-close" onClick={onClose} aria-label="Close">×</button>
-        <div className="detail-picture"><img src="/catalogue-enterprise.png" alt="" /><span>Professional service</span></div>
+        <div className="detail-picture"><img src={service.thumbnailUrl || "/catalogue-enterprise.png"} alt="" /><span>Professional service</span></div>
         <div className="detail-content">
           <small>MYTM SERVICE</small><h2>{service.name}</h2><p className="detail-lead">{service.shortDescription}</p>
+          {service.videoUrl && <section className="detail-media"><h3>Service video</h3>{isDirectVideo(service.videoUrl) ? <video controls playsInline preload="metadata" poster={service.thumbnailUrl || "/catalogue-enterprise.png"} src={service.videoUrl}><track kind="captions" src="/empty.vtt" srcLang="en" label="English" /></video> : embedUrl ? <iframe title={`${service.name} video`} src={embedUrl} allow="autoplay; fullscreen; picture-in-picture" allowFullScreen /> : <a href={service.videoUrl} target="_blank" rel="noreferrer">Watch service video ↗</a>}</section>}
           <section><h3>Capabilities</h3><div className="feature-list">{service.features.map((feature) => <div key={feature}><i>✓</i><span>{feature}</span></div>)}</div></section>
         </div>
-        <div className="detail-actions"><button className="red-action full-action" onClick={onMeeting}>{service.cta || "Book a consultation"}</button></div>
+        <div className="detail-actions">{service.pdfUrl && <button className="outline-action" onClick={() => window.open(service.pdfUrl, "_blank", "noopener,noreferrer")}>View deck</button>}<button className="red-action" onClick={onMeeting}>{service.cta || "Book a consultation"}</button></div>
       </aside>
     </div>
   );
@@ -333,7 +380,7 @@ function LeadModal({ catalogue, product, onClose, onSuccess }: { catalogue: Cata
     event.preventDefault(); setSaving(true); setError("");
     const values = Object.fromEntries(new FormData(event.currentTarget).entries());
     try {
-      const response = await fetch("/api/leads", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ ...values, source: "Product Deck", contentAccessed: product.name, productInterest: product.name, serviceInterest: "None" }) });
+      const response = await fetch("/api/leads", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ ...values, source: "Product Deck", contentAccessed: product.name, productInterest: values.productInterest || product.name, serviceInterest: values.serviceInterest || "None" }) });
       if (!response.ok) throw new Error();
       onSuccess();
     } catch {
@@ -342,6 +389,6 @@ function LeadModal({ catalogue, product, onClose, onSuccess }: { catalogue: Cata
   }
   const config = catalogue.settings.formConfig;
   return (
-    <div className="app-modal-backdrop"><section className="app-modal lead-app-modal" role="dialog" aria-modal="true"><header><div><small>PRODUCT DECK</small><h2>Enter your details</h2><p>We will only ask once during this session.</p></div><button onClick={onClose}>×</button></header><form onSubmit={submit}><label>Full name<input name="name" required={config.requireName} /></label><label>Contact number<input name="phone" required={config.requirePhone} /></label><label>Business email<input name="email" type="email" required={config.requireEmail} /></label><label>Company name<input name="company" required={config.requireCompany} /></label><label>Notes<textarea name="notes" rows={3} required={config.requireNotes} placeholder="What are you interested in?" /></label>{error && <p className="lead-error">{error}</p>}<button disabled={saving}>{saving ? "Submitting..." : product.pdfUrl ? "Continue to PDF" : "Request product deck"}</button></form></section></div>
+    <div className="app-modal-backdrop"><section className="app-modal lead-app-modal" role="dialog" aria-modal="true"><header><div><small>PRODUCT DECK</small><h2>Enter your details</h2><p>Tell us what interests you, then continue to the deck.</p></div><button onClick={onClose}>×</button></header><form onSubmit={submit}><label>Full name<input name="name" required={config.requireName} /></label><label>Contact number<input name="phone" required={config.requirePhone} /></label><label>Business email<input name="email" type="email" required={config.requireEmail} /></label><label>Company name<input name="company" required={config.requireCompany} /></label>{config.showProductInterest && <label>Product interest<select name="productInterest" defaultValue={product.name}><option value="None">None</option>{catalogue.products.map((item) => <option key={item.id} value={item.name}>{item.name}</option>)}<option value="Something else">Something else</option></select></label>}{config.showServiceInterest && <label>Service interest<select name="serviceInterest" defaultValue="None"><option value="None">None</option>{catalogue.services.map((item) => <option key={item.id} value={item.name}>{item.name}</option>)}<option value="Something else">Something else</option></select></label>}<label>Notes / something else<textarea name="notes" rows={3} required={config.requireNotes} placeholder="What are you most interested in?" /></label>{error && <p className="lead-error">{error}</p>}<button disabled={saving}>{saving ? "Submitting..." : product.pdfUrl ? "Continue to deck" : "Request product deck"}</button></form></section></div>
   );
 }

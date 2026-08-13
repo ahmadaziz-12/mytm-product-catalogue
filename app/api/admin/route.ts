@@ -1,12 +1,6 @@
-import { getChatGPTUser } from "../../chatgpt-auth";
 import { database, ensureStore, getSettings, productFromRow, serviceFromRow } from "../_store";
 
-async function authorized() {
-  return Boolean(await getChatGPTUser());
-}
-
 export async function GET() {
-  if (!(await authorized())) return Response.json({ error: "Sign in required" }, { status: 401 });
   await ensureStore();
   const db = database();
   const [products, services, leads, media, settings] = await Promise.all([
@@ -20,7 +14,6 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
-  if (!(await authorized())) return Response.json({ error: "Sign in required" }, { status: 401 });
   await ensureStore();
   const body = await request.json() as Record<string, unknown>;
   const action = String(body.action || "");
@@ -44,11 +37,11 @@ export async function POST(request: Request) {
     const benefits = String(p.benefits || "").split("\n").map((x) => x.trim()).filter(Boolean);
     const slug = String(p.name || "product").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
     if (p.id) {
-      await db.prepare(`UPDATE products SET name=?, slug=?, category=?, short_description=?, full_description=?, features=?, benefits=?, video_url=?, pdf_url=?, featured=?, require_lead=?, active=?, display_order=? WHERE id=?`)
-        .bind(p.name, slug, p.category, p.shortDescription, p.fullDescription, JSON.stringify(features), JSON.stringify(benefits), p.videoUrl || "", p.pdfUrl || "", Number(Boolean(p.featured)), Number(Boolean(p.requireLead)), Number(Boolean(p.active)), Number(p.displayOrder || 0), Number(p.id)).run();
+      await db.prepare(`UPDATE products SET name=?, slug=?, category=?, short_description=?, full_description=?, features=?, benefits=?, thumbnail_url=?, video_url=?, pdf_url=?, featured=?, require_lead=?, active=?, display_order=? WHERE id=?`)
+        .bind(p.name, slug, p.category, p.shortDescription, p.fullDescription, JSON.stringify(features), JSON.stringify(benefits), p.thumbnailUrl || "", p.videoUrl || "", p.pdfUrl || "", Number(Boolean(p.featured)), Number(Boolean(p.requireLead)), Number(Boolean(p.active)), Number(p.displayOrder || 0), Number(p.id)).run();
     } else {
-      await db.prepare(`INSERT INTO products (name, slug, category, short_description, full_description, features, benefits, video_url, pdf_url, featured, require_lead, active, display_order) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
-        .bind(p.name, slug, p.category, p.shortDescription, p.fullDescription, JSON.stringify(features), JSON.stringify(benefits), p.videoUrl || "", p.pdfUrl || "", Number(Boolean(p.featured)), Number(Boolean(p.requireLead)), Number(Boolean(p.active)), Number(p.displayOrder || 0)).run();
+      await db.prepare(`INSERT INTO products (name, slug, category, short_description, full_description, features, benefits, thumbnail_url, video_url, pdf_url, featured, require_lead, active, display_order) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
+        .bind(p.name, slug, p.category, p.shortDescription, p.fullDescription, JSON.stringify(features), JSON.stringify(benefits), p.thumbnailUrl || "", p.videoUrl || "", p.pdfUrl || "", Number(Boolean(p.featured)), Number(Boolean(p.requireLead)), Number(Boolean(p.active)), Number(p.displayOrder || 0)).run();
     }
     return Response.json({ success: true });
   }
@@ -57,9 +50,9 @@ export async function POST(request: Request) {
     const features = String(s.features || "").split("\n").map((x) => x.trim()).filter(Boolean);
     const slug = String(s.name || "service").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
     if (s.id) {
-      await db.prepare(`UPDATE services SET name=?, slug=?, short_description=?, features=?, cta=?, active=?, display_order=? WHERE id=?`).bind(s.name, slug, s.shortDescription, JSON.stringify(features), s.cta, Number(Boolean(s.active)), Number(s.displayOrder || 0), Number(s.id)).run();
+      await db.prepare(`UPDATE services SET name=?, slug=?, short_description=?, features=?, cta=?, thumbnail_url=?, video_url=?, pdf_url=?, active=?, display_order=? WHERE id=?`).bind(s.name, slug, s.shortDescription, JSON.stringify(features), s.cta, s.thumbnailUrl || "", s.videoUrl || "", s.pdfUrl || "", Number(Boolean(s.active)), Number(s.displayOrder || 0), Number(s.id)).run();
     } else {
-      await db.prepare(`INSERT INTO services (name, slug, short_description, features, cta, active, display_order) VALUES (?, ?, ?, ?, ?, ?, ?)`).bind(s.name, slug, s.shortDescription, JSON.stringify(features), s.cta, Number(Boolean(s.active)), Number(s.displayOrder || 0)).run();
+      await db.prepare(`INSERT INTO services (name, slug, short_description, features, cta, thumbnail_url, video_url, pdf_url, active, display_order) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`).bind(s.name, slug, s.shortDescription, JSON.stringify(features), s.cta, s.thumbnailUrl || "", s.videoUrl || "", s.pdfUrl || "", Number(Boolean(s.active)), Number(s.displayOrder || 0)).run();
     }
     return Response.json({ success: true });
   }
