@@ -76,6 +76,9 @@ const productNames: Array<[string, string, string]> = [
   ["MYTM Wallet Solutions", "Wallets", "Secure wallet experiences for consumers, merchants and institutions."],
   ["Onboarding Studio", "Enterprise", "Design compliant digital onboarding journeys without operational friction."],
   ["School Management System", "Education", "Unify academics, administration, payments and parent engagement."],
+  ["CompliClear AML/KYC Solution", "Compliance", "Automate AML screening, KYC verification and ongoing compliance monitoring."],
+  ["LOS / LMS", "Lending", "A unified loan origination and loan management platform for the complete credit lifecycle."],
+  ["AI Collection Management", "AI", "Improve recovery performance with intelligent prioritization, automation and collection insights."],
   ["AI Financial Analyst", "AI", "Turn complex financial data into decision-ready intelligence."],
   ["Agentic AI", "AI", "Deploy goal-driven AI agents across enterprise workflows."],
 ];
@@ -86,6 +89,7 @@ const featureMap: Record<string, string[]> = {
   Lending: ["Automated workflows", "Credit scoring", "Portfolio analytics", "Configurable products"],
   Wallets: ["White-label experience", "Secure ledger", "P2P and merchant payments", "Programmable limits"],
   AI: ["Enterprise intelligence", "Human-in-the-loop controls", "Explainable insights", "Workflow automation"],
+  Compliance: ["AML screening", "Digital KYC", "Risk scoring", "Ongoing monitoring"],
 };
 
 export const seedProducts: Product[] = productNames.map(([name, category, description], index) => ({
@@ -99,7 +103,7 @@ export const seedProducts: Product[] = productNames.map(([name, category, descri
   benefits: ["Faster time to market", "Lower operational complexity", "Scalable by design"],
   videoUrl: "",
   pdfUrl: "",
-  featured: [1, 3, 7, 15, 19].includes(index + 1),
+  featured: ["MYTM Cyber Security", "Payment Aggregation Solution", "KSA Government Services Integration", "Lending & Financing Solutions", "CompliClear AML/KYC Solution", "AI Financial Analyst"].includes(name),
   requireLead: true,
   active: true,
   displayOrder: index + 1,

@@ -25,7 +25,7 @@ type SelectedItem =
   | null;
 
 const financialCategories = new Set(["Banking", "Payments", "Lending", "Wallets", "Cards"]);
-const intelligenceCategories = new Set(["AI", "Cybersecurity"]);
+const intelligenceCategories = new Set(["AI", "Cybersecurity", "Compliance"]);
 
 function productImage(category: string) {
   if (financialCategories.has(category)) return "/catalogue-finance.png";

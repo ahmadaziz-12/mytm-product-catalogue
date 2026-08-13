@@ -37,12 +37,9 @@ export async function ensureStore() {
 
 async function seedStore() {
   const db = database();
-  const productCount = await db.prepare("SELECT COUNT(*) AS count FROM products").first<{ count: number }>();
-  if (!productCount?.count) {
-    for (const p of seedProducts) {
-      await db.prepare(`INSERT INTO products (name, slug, category, short_description, full_description, features, benefits, video_url, pdf_url, featured, require_lead, active, display_order) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
-        .bind(p.name, p.slug, p.category, p.shortDescription, p.fullDescription, JSON.stringify(p.features), JSON.stringify(p.benefits), p.videoUrl, p.pdfUrl, Number(p.featured), Number(p.requireLead), Number(p.active), p.displayOrder).run();
-    }
+  for (const p of seedProducts) {
+    await db.prepare(`INSERT OR IGNORE INTO products (name, slug, category, short_description, full_description, features, benefits, video_url, pdf_url, featured, require_lead, active, display_order) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
+      .bind(p.name, p.slug, p.category, p.shortDescription, p.fullDescription, JSON.stringify(p.features), JSON.stringify(p.benefits), p.videoUrl, p.pdfUrl, Number(p.featured), Number(p.requireLead), Number(p.active), p.displayOrder).run();
   }
   const serviceCount = await db.prepare("SELECT COUNT(*) AS count FROM services").first<{ count: number }>();
   if (!serviceCount?.count) {
