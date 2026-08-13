@@ -118,80 +118,72 @@ export default function Showcase() {
         <div className="app-brand">
           <img src="/mytm-logo.svg" alt="MYTM" />
           <span />
-          <strong>Product Catalogue</strong>
+          <strong>Interactive Catalogue</strong>
         </div>
-        <label className="top-search">
-          <span>⌕</span>
-          <input
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
-            placeholder="Search products and services"
-            aria-label="Search products and services"
-          />
-          {search && <button onClick={() => setSearch("")} aria-label="Clear search">×</button>}
-        </label>
+        <nav className="top-catalog-nav" aria-label="Catalogue navigation">
+          <button className={mode === "products" ? "active" : ""} onClick={() => { setMode("products"); document.getElementById("catalogue")?.scrollIntoView({ behavior: "smooth" }); }}>Products</button>
+          <button className={mode === "services" ? "active" : ""} onClick={() => { setMode("services"); document.getElementById("catalogue")?.scrollIntoView({ behavior: "smooth" }); }}>Services</button>
+          <button onClick={() => document.getElementById("partners")?.scrollIntoView({ behavior: "smooth" })}>Partners & clients</button>
+        </nav>
         <div className="app-bar-actions">
-          <a href="/admin" aria-label="Open admin panel">Admin</a>
           <button onClick={openMeeting}>{catalogue.settings.meetingLabel}</button>
         </div>
       </header>
 
       <div className="app-frame">
-        <aside className="catalog-sidebar">
-          <div className="sidebar-section">
-            <small>CATALOGUE</small>
-            <button className={mode === "products" ? "active" : ""} onClick={() => setMode("products")}>
-              <i>▦</i><span>Products</span><b>{catalogue.products.length}</b>
-            </button>
-            <button className={mode === "services" ? "active" : ""} onClick={() => setMode("services")}>
-              <i>◇</i><span>Services</span><b>{catalogue.services.length}</b>
-            </button>
-          </div>
-          {mode === "products" && (
-            <div className="sidebar-section category-list">
-              <small>CATEGORIES</small>
-              {categories.map((item) => (
-                <button className={category === item ? "active" : ""} key={item} onClick={() => setCategory(item)}>
-                  <i>{item === "All" ? "•" : item.slice(0, 2).toUpperCase()}</i><span>{item}</span>
-                </button>
-              ))}
-            </div>
-          )}
-          <div className="sidebar-help">
-            <div>?</div>
-            <strong>Need help choosing?</strong>
-            <p>Talk to a MYTM specialist.</p>
-            <button onClick={openMeeting}>Book a meeting</button>
-          </div>
-        </aside>
-
         <section className="catalog-main">
-          <div className="mobile-search-row">
-            <label className="mobile-search">
-              <span>⌕</span>
-              <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search catalogue" />
+          <section className="catalog-story" aria-labelledby="catalog-story-title">
+            <div className="story-copy">
+              <span>MYTM DIGITAL EXPERIENCE CENTRE</span>
+              <h1 id="catalog-story-title">Touch. Discover.<br /><em>Transform.</em></h1>
+              <p>Explore the technology powering modern finance. Tap any product or service to see its story, watch a demo, open its deck or meet our team.</p>
+              <div className="story-actions">
+                <button onClick={() => document.getElementById("catalogue")?.scrollIntoView({ behavior: "smooth" })}>Explore catalogue</button>
+                <button onClick={openMeeting}>Talk to MYTM</button>
+              </div>
+            </div>
+            <div className="story-visual">
+              <img src="/finova-cover.png" alt="MYTM digital lending and AI product experience" />
+              <div><strong>{catalogue.products.length}+</strong><span>Products</span></div>
+              <div><strong>{catalogue.services.length}</strong><span>Services</span></div>
+            </div>
+          </section>
+
+          <section className="partner-showcase" id="partners" aria-labelledby="partners-title">
+            <div className="partner-heading">
+              <span>TRUSTED ECOSYSTEM</span>
+              <h2 id="partners-title">Our partners & clients</h2>
+              <p>Built alongside organizations shaping payments, banking, lending and digital transformation.</p>
+            </div>
+            <img src="/mytm-partners-clients.png" alt="MYTM partners and clients including RentRacks, 1Bill, Mastercard, PayFast, SAMA, RIDE, Rabee and others" />
+          </section>
+
+          <div className="catalogue-toolbar" id="catalogue">
+            <div className="catalogue-mode-switch" role="tablist" aria-label="Catalogue type">
+              <button className={mode === "products" ? "active" : ""} onClick={() => setMode("products")}><span>Products</span><b>{catalogue.products.length}</b></button>
+              <button className={mode === "services" ? "active" : ""} onClick={() => setMode("services")}><span>Services</span><b>{catalogue.services.length}</b></button>
+            </div>
+            <label className="catalog-search">
+              <span>Search</span>
+              <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Find a product or service" aria-label="Search catalogue" />
+              {search && <button onClick={() => setSearch("")} aria-label="Clear search">×</button>}
             </label>
           </div>
 
           <div className="catalog-heading">
             <div>
-              <span className="welcome-pill">MYTM DIGITAL CATALOGUE</span>
-              <h1>{mode === "products" ? "All products" : "Professional services"}</h1>
+              <span className="welcome-pill">EXPLORE THE CATALOGUE</span>
+              <h2>{mode === "products" ? "Products built for progress" : "Services that move you forward"}</h2>
               <p>
                 {mode === "products"
-                  ? "Browse MYTM's complete technology portfolio. Tap any product to view details."
-                  : "Explore specialist services for technology delivery, quality and security."}
+                  ? "Tap a card to explore capabilities, watch videos, view product decks and book a tailored demonstration."
+                  : "Discover expert support for delivery, quality, security and technology transformation."}
               </p>
             </div>
             <div className="view-summary">
               <strong>{mode === "products" ? products.length : services.length}</strong>
               <span>{mode === "products" ? "products" : "services"}</span>
             </div>
-          </div>
-
-          <div className="mobile-mode-switch" role="tablist" aria-label="Catalogue type">
-            <button className={mode === "products" ? "active" : ""} onClick={() => setMode("products")}>Products <b>{catalogue.products.length}</b></button>
-            <button className={mode === "services" ? "active" : ""} onClick={() => setMode("services")}>Services <b>{catalogue.services.length}</b></button>
           </div>
 
           {mode === "products" && (
@@ -219,14 +211,19 @@ export default function Showcase() {
           {mode === "products" && products.length === 0 && (
             <div className="catalog-empty"><span>⌕</span><h2>No products found</h2><p>Try another category or search term.</p><button onClick={() => { setSearch(""); setCategory("All"); }}>Show all products</button></div>
           )}
+
+          <section className="catalogue-cta">
+            <div><span>READY TO GO DEEPER?</span><h2>Let’s build your next digital financial experience.</h2></div>
+            <button onClick={openMeeting}>{catalogue.settings.meetingLabel}</button>
+          </section>
         </section>
       </div>
 
       <nav className="app-bottom-nav" aria-label="Mobile catalogue navigation">
-        <button className={mode === "products" ? "active" : ""} onClick={() => setMode("products")}><i>▦</i><span>Products</span></button>
-        <button className={mode === "services" ? "active" : ""} onClick={() => setMode("services")}><i>◇</i><span>Services</span></button>
-        <button onClick={openMeeting}><i>□</i><span>Meeting</span></button>
-        <a href="/admin"><i>⚙</i><span>Admin</span></a>
+        <button className={mode === "products" ? "active" : ""} onClick={() => setMode("products")}><span>Products</span></button>
+        <button className={mode === "services" ? "active" : ""} onClick={() => setMode("services")}><span>Services</span></button>
+        <button onClick={() => document.getElementById("partners")?.scrollIntoView({ behavior: "smooth" })}><span>Clients</span></button>
+        <button onClick={openMeeting}><span>Meeting</span></button>
       </nav>
 
       {selected?.type === "product" && (
@@ -262,16 +259,16 @@ export default function Showcase() {
           }}
         />
       )}
-      {catalogue.settings.welcomeScreen && welcomeOpen && (
+      {welcomeOpen && (
         <section className="idle-experience" aria-label="Welcome to the MYTM catalogue">
-          <video autoPlay muted loop playsInline poster="/finova-cover.png" src="/api/media?key=finova-product-video.mp4" />
+          <video autoPlay muted loop playsInline poster="/finova-cover.png" src="/api/media?key=finova-product-video.mp4"><track kind="captions" src="/empty.vtt" srcLang="en" label="English" /></video>
           <div className="idle-shade" />
           <div className="idle-content">
             <img src="/mytm-logo.svg" alt="MYTM" />
             <span>MYTM DIGITAL EXPERIENCE CENTRE</span>
-            <h1>Touch to explore MYTM</h1>
-            <p>Discover our products, services, live demos and product decks.</p>
-            <button onClick={() => setWelcomeOpen(false)}><i /> Touch anywhere to begin</button>
+            <h1>Touch to see MYTM’s products & services</h1>
+            <p>Step into the future of finance. Explore solutions, watch product stories and connect with our team.</p>
+            <button onClick={() => setWelcomeOpen(false)}>Touch anywhere to explore</button>
           </div>
         </section>
       )}
@@ -283,7 +280,7 @@ function ProductCard({ product, onOpen }: { product: Product; onOpen: () => void
   return (
     <article className="catalog-card">
       <button className="card-image-button" onClick={onOpen} aria-label={`View ${product.name}`}>
-        <img src={product.thumbnailUrl || productImage(product.category)} alt="" />
+        <img src={product.thumbnailUrl || productImage(product.category)} alt={`${product.name} catalogue visual`} />
         <span className="card-category">{product.category}</span>
         {product.featured && <span className="card-featured">Featured</span>}
       </button>
@@ -304,7 +301,7 @@ function ServiceCard({ service, index, onOpen }: { service: Service; index: numb
   return (
     <article className="catalog-card service-catalog-card">
       <button className="card-image-button" onClick={onOpen} aria-label={`View ${service.name}`}>
-        <img src={service.thumbnailUrl || serviceImage(index)} alt="" />
+        <img src={service.thumbnailUrl || serviceImage(index)} alt={`${service.name} service visual`} />
         <span className="card-category">Service</span>
       </button>
       <div className="catalog-card-body">
