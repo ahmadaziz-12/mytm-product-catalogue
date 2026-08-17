@@ -18,7 +18,7 @@ export default function AdminClient({ user }: { user: { name: string; email: str
   const [editingService, setEditingService] = useState<Partial<Service> | null>(null);
   const [notice, setNotice] = useState("");
 
-  const load = () => fetch("/api/admin").then((r) => r.json()).then(setData);
+  const load = () => fetch("/api/admin").then((r) => r.json() as Promise<AdminData>).then(setData);
   useEffect(() => { load(); }, []);
   const flash = (message: string) => { setNotice(message); setTimeout(() => setNotice(""), 2600); };
   async function action(payload: Record<string, unknown>) { const response = await fetch("/api/admin", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(payload) }); if (!response.ok) throw new Error("Action failed"); await load(); }
@@ -65,7 +65,7 @@ function MediaLibrary({ media, onUploaded }: { media: Media[]; onUploaded: () =>
     const form = event.currentTarget;
     try {
       const response = await fetch("/api/media", { method: "POST", body: new FormData(form) });
-      if (!response.ok) throw new Error((await response.json()).error || "Upload failed");
+      if (!response.ok) throw new Error(((await response.json()) as any).error || "Upload failed");
       form.reset();
       onUploaded();
     } catch (uploadError) {

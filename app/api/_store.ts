@@ -16,8 +16,8 @@ const schemaStatements = [
 let ready: Promise<void> | null = null;
 
 export function database() {
-  if (!env.DB) throw new Error("The catalogue database is not available.");
-  return env.DB;
+  if (!(env as any).DB) throw new Error("The catalogue database is not available.");
+  return (env as any).DB;
 }
 
 export async function ensureStore() {
@@ -25,17 +25,17 @@ export async function ensureStore() {
     ready = (async () => {
       const db = database();
       for (const sql of schemaStatements) await db.prepare(sql).run();
-      const productColumns = await db.prepare("PRAGMA table_info(products)").all<{ name: string }>();
-      if (!productColumns.results.some((column) => column.name === "thumbnail_url")) {
+      const productColumns = await db.prepare("PRAGMA table_info(products)").all() as { results: { name: string }[] };
+      if (!productColumns.results.some((column: any) => column.name === "thumbnail_url")) {
         await db.prepare("ALTER TABLE products ADD COLUMN thumbnail_url TEXT NOT NULL DEFAULT ''").run();
       }
-      const serviceColumns = await db.prepare("PRAGMA table_info(services)").all<{ name: string }>();
+      const serviceColumns = await db.prepare("PRAGMA table_info(services)").all() as { results: { name: string }[] };
       for (const [name, sql] of [
         ["thumbnail_url", "ALTER TABLE services ADD COLUMN thumbnail_url TEXT NOT NULL DEFAULT ''"],
         ["video_url", "ALTER TABLE services ADD COLUMN video_url TEXT NOT NULL DEFAULT ''"],
         ["pdf_url", "ALTER TABLE services ADD COLUMN pdf_url TEXT NOT NULL DEFAULT ''"],
       ] as const) {
-        if (!serviceColumns.results.some((column) => column.name === name)) await db.prepare(sql).run();
+        if (!serviceColumns.results.some((column: any) => column.name === name)) await db.prepare(sql).run();
       }
       await seedStore();
       await db.prepare("PRAGMA optimize").run();
@@ -54,14 +54,14 @@ async function seedStore() {
       .bind(p.name, p.slug, p.category, p.shortDescription, p.fullDescription, JSON.stringify(p.features), JSON.stringify(p.benefits), p.thumbnailUrl, p.videoUrl, p.pdfUrl, Number(p.featured), Number(p.requireLead), Number(p.active), p.displayOrder).run();
   }
   await db.prepare(`UPDATE products SET thumbnail_url = CASE WHEN thumbnail_url = '' THEN '/finova-cover.png' ELSE thumbnail_url END, video_url = CASE WHEN video_url = '' THEN '/api/media?key=finova-product-video.mp4' ELSE video_url END, pdf_url = CASE WHEN pdf_url = '' THEN '/api/media?key=finova-product-deck.pptx' ELSE pdf_url END WHERE name IN ('AI Financial Analyst', 'AI Collection Management')`).run();
-  const serviceCount = await db.prepare("SELECT COUNT(*) AS count FROM services").first<{ count: number }>();
+  const serviceCount = await db.prepare("SELECT COUNT(*) AS count FROM services").first() as { count: number } | null;
   if (!serviceCount?.count) {
     for (const s of seedServices) {
       await db.prepare(`INSERT INTO services (name, slug, short_description, features, cta, thumbnail_url, video_url, pdf_url, active, display_order) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
         .bind(s.name, s.slug, s.shortDescription, JSON.stringify(s.features), s.cta, s.thumbnailUrl, s.videoUrl, s.pdfUrl, Number(s.active), s.displayOrder).run();
     }
   }
-  const caseCount = await db.prepare("SELECT COUNT(*) AS count FROM case_studies").first<{ count: number }>();
+  const caseCount = await db.prepare("SELECT COUNT(*) AS count FROM case_studies").first() as { count: number } | null;
   if (!caseCount?.count) {
     for (const item of seedCases) {
       await db.prepare(`INSERT INTO case_studies (client_name, challenge, solution, impact, active, display_order) VALUES (?, ?, ?, ?, ?, ?)`)
@@ -90,6 +90,6 @@ export function caseFromRow(c: CaseRow): CaseStudy {
 
 export async function getSettings(): Promise<SiteSettings> {
   await ensureStore();
-  const row = await database().prepare("SELECT value FROM settings WHERE key = 'site'").first<{ value: string }>();
+  const row = await database().prepare("SELECT value FROM settings WHERE key = 'site'").first() as { value: string } | null;
   return row ? JSON.parse(row.value) : defaultSettings;
 }

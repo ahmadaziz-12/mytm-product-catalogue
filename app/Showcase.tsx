@@ -66,7 +66,7 @@ export default function Showcase() {
 
   useEffect(() => {
     fetch("/api/catalog")
-      .then((response) => (response.ok ? response.json() : Promise.reject()))
+      .then((response) => (response.ok ? (response.json() as Promise<Catalogue>) : Promise.reject()))
       .then(setCatalogue)
       .catch(() => undefined);
   }, []);

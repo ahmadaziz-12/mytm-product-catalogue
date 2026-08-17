@@ -10,7 +10,7 @@ export async function GET() {
       db.prepare("SELECT * FROM case_studies WHERE active = 1 ORDER BY display_order, id").all(),
       getSettings(),
     ]);
-    return Response.json({ products: products.results.map((row) => productFromRow(row as never)), services: services.results.map((row) => serviceFromRow(row as never)), cases: cases.results.map((row) => caseFromRow(row as never)), settings });
+    return Response.json({ products: products.results.map((row: any) => productFromRow(row as never)), services: services.results.map((row: any) => serviceFromRow(row as never)), cases: cases.results.map((row: any) => caseFromRow(row as never)), settings });
   } catch (error) {
     return Response.json({ error: error instanceof Error ? error.message : "Unable to load catalogue" }, { status: 500 });
   }

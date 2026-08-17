@@ -10,7 +10,7 @@ export async function GET() {
     db.prepare("SELECT * FROM media ORDER BY created_at DESC").all(),
     getSettings(),
   ]);
-  return Response.json({ products: products.results.map((r) => productFromRow(r as never)), services: services.results.map((r) => serviceFromRow(r as never)), leads: leads.results, media: media.results, settings });
+  return Response.json({ products: products.results.map((r: any) => productFromRow(r as never)), services: services.results.map((r: any) => serviceFromRow(r as never)), leads: leads.results, media: media.results, settings });
 }
 
 export async function POST(request: Request) {
