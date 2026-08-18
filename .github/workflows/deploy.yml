@@ -1,0 +1,62 @@
+name: Deploy to Cloudflare
+
+# Builds the site and deploys it to Cloudflare Workers. Requires the
+# "Bootstrap Cloudflare resources" workflow to have been run at least once
+# (so deploy/cf-resources.json holds a real D1 database id, not the
+# placeholder).
+#
+# Requires these repository secrets (Settings -> Secrets and variables ->
+# Actions):
+#   CLOUDFLARE_API_TOKEN   - same token used for bootstrap
+#   CLOUDFLARE_ACCOUNT_ID  - your Cloudflare account id
+#   ADMIN_PASSWORD         - password protecting /admin, /api/admin/*, and
+#                            uploads via /api/media - pick a strong value,
+#                            this is the only thing standing between the
+#                            public internet and your admin panel
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Confirm Cloudflare resources are bootstrapped
+        run: |
+          node -e "
+            const c = require('./deploy/cf-resources.json');
+            if (c.d1DatabaseId === '00000000-0000-4000-8000-000000000000') {
+              console.error('deploy/cf-resources.json still has the placeholder database id.');
+              console.error('Run the \"Bootstrap Cloudflare resources\" workflow first (Actions tab -> Bootstrap Cloudflare resources -> Run workflow), then re-run this Deploy workflow.');
+              process.exit(1);
+            }
+          "
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Build
+        run: npm run build
+
+      - name: Deploy
+        run: npx wrangler deploy --config dist/server/wrangler.json
+
+      - name: Set admin password secret
+        run: echo "${{ secrets.ADMIN_PASSWORD }}" | npx wrangler secret put ADMIN_PASSWORD --config dist/server/wrangler.json
