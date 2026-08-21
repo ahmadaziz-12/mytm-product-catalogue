@@ -1,7 +1,11 @@
 import { env } from "cloudflare:workers";
 import { database, ensureStore } from "../_store";
+import { getChatGPTUser, isMYTMAdmin } from "../../chatgpt-auth";
 
 export async function POST(request: Request) {
+  const user = await getChatGPTUser();
+  if (!user) return Response.json({ error: "Sign in required" }, { status: 401 });
+  if (!isMYTMAdmin(user)) return Response.json({ error: "Admin access required" }, { status: 403 });
   await ensureStore();
   const data = await request.formData();
   const file = data.get("file");

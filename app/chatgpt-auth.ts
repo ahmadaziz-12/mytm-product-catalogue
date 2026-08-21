@@ -48,6 +48,18 @@ export async function requireChatGPTUser(
   redirect(chatGPTSignInPath(returnTo));
 }
 
+export function isMYTMAdmin(user: ChatGPTUser): boolean {
+  return user.email.trim().toLowerCase().endsWith("@mytm.co");
+}
+
+export async function requireMYTMAdmin(
+  returnTo: string,
+): Promise<ChatGPTUser> {
+  const user = await requireChatGPTUser(returnTo);
+  if (!isMYTMAdmin(user)) redirect("/");
+  return user;
+}
+
 export function chatGPTSignInPath(returnTo: string): string {
   const safeReturnTo = safeRelativeReturnPath(returnTo);
   return `${SIGN_IN_PATH}?return_to=${encodeURIComponent(safeReturnTo)}`;

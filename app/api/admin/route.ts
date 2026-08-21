@@ -1,6 +1,16 @@
 import { database, ensureStore, getSettings, productFromRow, serviceFromRow } from "../_store";
+import { getChatGPTUser, isMYTMAdmin } from "../../chatgpt-auth";
+
+async function requireAdmin() {
+  const user = await getChatGPTUser();
+  if (!user) return Response.json({ error: "Sign in required" }, { status: 401 });
+  if (!isMYTMAdmin(user)) return Response.json({ error: "Admin access required" }, { status: 403 });
+  return null;
+}
 
 export async function GET() {
+  const unauthorized = await requireAdmin();
+  if (unauthorized) return unauthorized;
   await ensureStore();
   const db = database();
   const [products, services, leads, media, settings] = await Promise.all([
@@ -14,6 +24,8 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
+  const unauthorized = await requireAdmin();
+  if (unauthorized) return unauthorized;
   await ensureStore();
   const body = await request.json() as Record<string, unknown>;
   const action = String(body.action || "");
