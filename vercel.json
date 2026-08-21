@@ -1,0 +1,9 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "rewrites": [
+    {
+      "source": "/:path*",
+      "destination": "https://mytm-product-catalogue.ahmad-aziz9757.chatgpt.site/:path*"
+    }
+  ]
+}
