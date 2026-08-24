@@ -25,6 +25,9 @@ type SelectedItem =
   | { type: "service"; item: Service }
   | null;
 
+type AssistantRecommendation = { type: "product" | "service"; id: number; name: string; category: string };
+type AssistantMessage = { role: "user" | "assistant"; content: string; recommendations?: AssistantRecommendation[]; poweredBy?: "openai" | "catalogue" };
+
 const categoryImages: Record<string, string> = {
   Banking: "/card-banking.jpg",
   Payments: "/card-banking.jpg",
@@ -81,6 +84,7 @@ export default function Showcase() {
   const [meetingOpen, setMeetingOpen] = useState(false);
   const [leadProduct, setLeadProduct] = useState<Product | null>(null);
   const [welcomeOpen, setWelcomeOpen] = useState(true);
+  const [assistantOpen, setAssistantOpen] = useState(false);
 
   useEffect(() => {
     fetch("/api/catalog")
@@ -113,6 +117,15 @@ export default function Showcase() {
     };
   }, [welcomeOpen, selected, meetingOpen, leadProduct]);
 
+  useEffect(() => {
+    const elements = document.querySelectorAll<HTMLElement>("[data-reveal]");
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach((entry) => entry.isIntersecting && entry.target.classList.add("is-visible"));
+    }, { threshold: 0.12, rootMargin: "0px 0px -40px" });
+    elements.forEach((element) => observer.observe(element));
+    return () => observer.disconnect();
+  }, [mode, category, search, catalogue]);
+
   const categories = useMemo(
     () => ["All", ...Array.from(new Set(catalogue.products.map((product) => product.category)))],
     [catalogue.products],
@@ -135,6 +148,15 @@ export default function Showcase() {
     setSearch("");
     requestAnimationFrame(() => document.getElementById("catalogue")?.scrollIntoView({ behavior: "smooth" }));
   };
+  const openAssistantRecommendation = (recommendation: AssistantRecommendation) => {
+    if (recommendation.type === "product") {
+      const product = catalogue.products.find((item) => item.id === recommendation.id);
+      if (product) setSelected({ type: "product", item: product });
+    } else {
+      const service = catalogue.services.find((item) => item.id === recommendation.id);
+      if (service) setSelected({ type: "service", item: service });
+    }
+  };
 
   return (
     <main className="catalog-app">
@@ -150,6 +172,7 @@ export default function Showcase() {
           <button onClick={() => document.getElementById("partners")?.scrollIntoView({ behavior: "smooth" })}>Partners & clients</button>
         </nav>
         <div className="app-bar-actions">
+          <button className="ai-header-trigger" onClick={() => setAssistantOpen(true)}><i>✦</i> Ask MYTM AI</button>
           <button onClick={openMeeting}>{catalogue.settings.meetingLabel}</button>
         </div>
       </header>
@@ -157,8 +180,10 @@ export default function Showcase() {
       <div className="app-frame">
         <section className="catalog-main">
           <section className="catalog-story" aria-labelledby="catalog-story-title">
+            <div className="story-spectrum" aria-hidden="true"><i /><i /><i /></div>
             <div className="story-copy">
               <span>MYTM DIGITAL EXPERIENCE CENTRE</span>
+              <button className="ai-discovery-pill" onClick={() => setAssistantOpen(true)}><i>✦</i> AI-guided discovery is live <b>Try it →</b></button>
               <h1 id="catalog-story-title">Touch. Discover.<br /><em>Transform.</em></h1>
               <p>Explore the technology powering modern finance. Tap any product or service to see its story, watch a demo, open its deck or meet our team.</p>
               <div className="story-actions">
@@ -173,7 +198,7 @@ export default function Showcase() {
             </div>
           </section>
 
-          <section className="executive-dashboard" aria-labelledby="executive-dashboard-title">
+          <section className="executive-dashboard" aria-labelledby="executive-dashboard-title" data-reveal>
             <div className="dashboard-heading">
               <div><span><i /> LIVE CATALOGUE INTELLIGENCE</span><h2 id="executive-dashboard-title">Navigate MYTM by business priority.</h2></div>
               <p>A decision-ready view of the products, services and expertise available to accelerate your next digital initiative.</p>
@@ -198,7 +223,7 @@ export default function Showcase() {
             </div>
           </section>
 
-          <section className="partner-showcase" id="partners" aria-labelledby="partners-title">
+          <section className="partner-showcase" id="partners" aria-labelledby="partners-title" data-reveal>
             <div className="partner-heading">
               <span>TRUSTED ECOSYSTEM</span>
               <h2 id="partners-title">Our partners & clients</h2>
@@ -219,7 +244,7 @@ export default function Showcase() {
             </label>
           </div>
 
-          <div className="catalog-heading">
+          <div className="catalog-heading" data-reveal>
             <div>
               <span className="welcome-pill">EXPLORE THE CATALOGUE</span>
               <h2>{mode === "products" ? "Products built for progress" : "Services that move you forward"}</h2>
@@ -244,13 +269,13 @@ export default function Showcase() {
           )}
 
           {mode === "products" ? (
-            <div className="catalog-grid">
+            <div className="catalog-grid" data-reveal>
               {products.map((product) => (
                 <ProductCard key={product.id} product={product} onOpen={() => setSelected({ type: "product", item: product })} />
               ))}
             </div>
           ) : (
-            <div className="catalog-grid services-catalog-grid">
+            <div className="catalog-grid services-catalog-grid" data-reveal>
               {services.map((service, index) => (
                 <ServiceCard key={service.id} service={service} index={index} onOpen={() => setSelected({ type: "service", item: service })} />
               ))}
@@ -261,12 +286,19 @@ export default function Showcase() {
             <div className="catalog-empty"><span>⌕</span><h2>No products found</h2><p>Try another category or search term.</p><button onClick={() => { setSearch(""); setCategory("All"); }}>Show all products</button></div>
           )}
 
-          <section className="catalogue-cta">
+          <section className="catalogue-cta" data-reveal>
             <div><span>READY TO GO DEEPER?</span><h2>Let’s build your next digital financial experience.</h2></div>
             <button onClick={openMeeting}>{catalogue.settings.meetingLabel}</button>
           </section>
         </section>
       </div>
+
+      <CatalogueAssistant
+        open={assistantOpen}
+        onOpenChange={setAssistantOpen}
+        onRecommendation={openAssistantRecommendation}
+        onMeeting={openMeeting}
+      />
 
       <nav className="app-bottom-nav" aria-label="Mobile catalogue navigation">
         <button className={mode === "products" ? "active" : ""} onClick={() => setMode("products")}><span>Products</span></button>
@@ -323,6 +355,49 @@ export default function Showcase() {
       )}
     </main>
   );
+}
+
+function CatalogueAssistant({ open, onOpenChange, onRecommendation, onMeeting }: { open: boolean; onOpenChange: (open: boolean) => void; onRecommendation: (recommendation: AssistantRecommendation) => void; onMeeting: () => void }) {
+  const [messages, setMessages] = useState<AssistantMessage[]>([{ role: "assistant", content: "Hi — I’m the MYTM AI catalogue assistant. Tell me your business challenge and I’ll recommend the right products and services." }]);
+  const [value, setValue] = useState("");
+  const [sending, setSending] = useState(false);
+  const [error, setError] = useState("");
+  const prompts = ["I need an AML/KYC solution", "Improve loan collections with AI", "Build a digital lending platform", "Modernize payment infrastructure"];
+
+  async function ask(question = value) {
+    const message = question.trim();
+    if (!message || sending) return;
+    const nextMessages = [...messages, { role: "user" as const, content: message }];
+    setMessages(nextMessages);
+    setValue("");
+    setSending(true);
+    setError("");
+    try {
+      const response = await fetch("/api/assistant", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ message, history: messages.slice(-6).map(({ role, content }) => ({ role, content })) }) });
+      const result = await response.json() as { reply?: string; recommendations?: AssistantRecommendation[]; poweredBy?: "openai" | "catalogue"; error?: string };
+      if (!response.ok || !result.reply) throw new Error(result.error || "The assistant is temporarily unavailable.");
+      setMessages([...nextMessages, { role: "assistant", content: result.reply, recommendations: result.recommendations, poweredBy: result.poweredBy }]);
+    } catch (assistantError) {
+      setError(assistantError instanceof Error ? assistantError.message : "The assistant is temporarily unavailable.");
+    } finally {
+      setSending(false);
+    }
+  }
+
+  return <div className={`catalogue-assistant ${open ? "open" : ""}`}>
+    <button className="assistant-launcher" onClick={() => onOpenChange(!open)} aria-expanded={open} aria-controls="mytm-ai-panel"><span><i>✦</i><b>Ask MYTM AI</b></span><em>{open ? "×" : "↗"}</em></button>
+    <section className="assistant-panel" id="mytm-ai-panel" aria-label="MYTM AI catalogue assistant">
+      <header><div className="assistant-orb"><i>✦</i></div><div><small><i /> ONLINE</small><strong>MYTM AI Assistant</strong><span>Product intelligence, instantly</span></div><button onClick={() => onOpenChange(false)} aria-label="Close assistant">×</button></header>
+      <div className="assistant-messages" aria-live="polite">
+        {messages.map((message, index) => <div className={`assistant-message ${message.role}`} key={`${message.role}-${index}`}><span>{message.content}</span>{message.recommendations?.length ? <div className="assistant-recommendations">{message.recommendations.map((recommendation) => <button key={`${recommendation.type}-${recommendation.id}`} onClick={() => onRecommendation(recommendation)}><small>{recommendation.category}</small><strong>{recommendation.name}</strong><i>Open →</i></button>)}</div> : null}{message.role === "assistant" && message.poweredBy === "catalogue" && <small className="assistant-mode">Catalogue intelligence mode</small>}</div>)}
+        {sending && <div className="assistant-message assistant typing"><i /><i /><i /></div>}
+        {error && <div className="assistant-error">{error}</div>}
+      </div>
+      {messages.length === 1 && <div className="assistant-prompts">{prompts.map((prompt) => <button key={prompt} onClick={() => ask(prompt)}>{prompt}<span>↗</span></button>)}</div>}
+      <form onSubmit={(event) => { event.preventDefault(); ask(); }}><label><span>Ask about a product, service or challenge</span><textarea rows={2} value={value} onChange={(event) => setValue(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); ask(); } }} placeholder="e.g. Which solution can automate our loan collections?" maxLength={700} /></label><button disabled={sending || !value.trim()} aria-label="Send question">↑</button></form>
+      <footer><span>Don’t share confidential or financial information.</span><button onClick={onMeeting}>Talk to a MYTM expert →</button></footer>
+    </section>
+  </div>;
 }
 
 function ProductCard({ product, onOpen }: { product: Product; onOpen: () => void }) {
