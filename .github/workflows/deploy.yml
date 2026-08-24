@@ -1,6 +1,8 @@
-name: Deploy to Cloudflare
+name: Manual Cloudflare deployment
 
-# Builds the site and deploys it to Cloudflare Workers. Requires the
+# Optional manual deployment for a separately managed Cloudflare Workers
+# environment. Production pushes are handled by Vercel and the existing Sites
+# project, so this workflow must not run automatically on every push. Requires the
 # "Bootstrap Cloudflare resources" workflow to have been run at least once
 # (so deploy/cf-resources.json holds a real D1 database id, not the
 # placeholder).
@@ -15,8 +17,6 @@ name: Deploy to Cloudflare
 #                            public internet and your admin panel
 
 on:
-  push:
-    branches: [main]
   workflow_dispatch: {}
 
 permissions:
