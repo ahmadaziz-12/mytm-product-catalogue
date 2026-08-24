@@ -467,6 +467,36 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
   .detail-content>h2 { font-size:34px; }
 }
 
+/* Registered MYTM brand mark */
+.app-brand { text-decoration:none; }
+.app-brand .mytm-registered-logo {
+  width:132px;
+  height:58px;
+  object-fit:contain;
+  filter:none;
+  background:#fff;
+  border-radius:5px;
+}
+.admin-brand .mytm-registered-logo {
+  width:150px;
+  height:auto;
+  object-fit:contain;
+  filter:none;
+  background:#fff;
+  border-radius:5px;
+}
+.admin-loading .mytm-registered-logo { width:150px; height:auto; filter:none; }
+.preview-site .mytm-registered-logo { width:86px; height:auto; filter:none; }
+.idle-content .mytm-registered-logo { width:min(270px,58vw); height:auto; filter:none; border-radius:7px; }
+
+@media(max-width:1000px) {
+  .admin-brand .mytm-registered-logo { width:48px; }
+}
+
+@media(max-width:760px) {
+  .app-brand .mytm-registered-logo { width:104px; height:46px; }
+}
+
 @media(prefers-reduced-motion:reduce) {
   html { scroll-behavior:auto; }
   *,*::before,*::after { animation-duration:.001ms!important; animation-iteration-count:1!important; transition-duration:.001ms!important; }

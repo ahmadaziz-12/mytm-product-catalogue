@@ -1,5 +1,12 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
+  "redirects": [
+    {
+      "source": "/admin",
+      "destination": "https://mytm-product-catalogue.ahmad-aziz9757.chatgpt.site/admin",
+      "permanent": false
+    }
+  ],
   "rewrites": [
     {
       "source": "/",

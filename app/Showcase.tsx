@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import {
   defaultSettings,
   seedCases,
@@ -115,11 +116,11 @@ export default function Showcase() {
   return (
     <main className="catalog-app">
       <header className="app-bar">
-        <div className="app-brand">
-          <img src="/mytm-logo.svg" alt="MYTM" />
+        <Link className="app-brand" href="/" aria-label="MYTM catalogue home">
+          <img className="mytm-registered-logo" src="/mytm-registered-logo.png" alt="MYTM" />
           <span />
           <strong>Interactive Catalogue</strong>
-        </div>
+        </Link>
         <nav className="top-catalog-nav" aria-label="Catalogue navigation">
           <button className={mode === "products" ? "active" : ""} onClick={() => { setMode("products"); document.getElementById("catalogue")?.scrollIntoView({ behavior: "smooth" }); }}>Products</button>
           <button className={mode === "services" ? "active" : ""} onClick={() => { setMode("services"); document.getElementById("catalogue")?.scrollIntoView({ behavior: "smooth" }); }}>Services</button>
@@ -264,7 +265,7 @@ export default function Showcase() {
           <video autoPlay muted loop playsInline poster="/finova-cover.png" src="/api/media?key=finova-product-video.mp4"><track kind="captions" src="/empty.vtt" srcLang="en" label="English" /></video>
           <div className="idle-shade" />
           <div className="idle-content">
-            <img src="/mytm-logo.svg" alt="MYTM" />
+            <img className="mytm-registered-logo" src="/mytm-registered-logo.png" alt="MYTM" />
             <span>MYTM DIGITAL EXPERIENCE CENTRE</span>
             <h1>Touch to see MYTM’s products & services</h1>
             <p>Step into the future of finance. Explore solutions, watch product stories and connect with our team.</p>
