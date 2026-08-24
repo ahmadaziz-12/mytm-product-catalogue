@@ -1,4 +1,5 @@
 import { database, ensureStore, getSettings, productFromRow, serviceFromRow } from "../_store";
+import { fetchGoogleCalendar, validateGoogleCalendarUrl } from "../_calendar";
 import { getChatGPTUser, isMYTMAdmin } from "../../chatgpt-auth";
 
 async function requireAdmin() {
@@ -13,14 +14,15 @@ export async function GET() {
   if (unauthorized) return unauthorized;
   await ensureStore();
   const db = database();
-  const [products, services, leads, media, settings] = await Promise.all([
+  const [products, services, leads, media, settings, calendarFeed] = await Promise.all([
     db.prepare("SELECT * FROM products ORDER BY display_order, id").all(),
     db.prepare("SELECT * FROM services ORDER BY display_order, id").all(),
     db.prepare("SELECT * FROM leads ORDER BY created_at DESC LIMIT 100").all(),
     db.prepare("SELECT * FROM media ORDER BY created_at DESC").all(),
     getSettings(),
+    db.prepare("SELECT value FROM settings WHERE key = 'google_calendar_ical_url'").first() as Promise<{ value: string } | null>,
   ]);
-  return Response.json({ products: products.results.map((r: any) => productFromRow(r as never)), services: services.results.map((r: any) => serviceFromRow(r as never)), leads: leads.results, media: media.results, settings });
+  return Response.json({ products: products.results.map((r: any) => productFromRow(r as never)), services: services.results.map((r: any) => serviceFromRow(r as never)), leads: leads.results, media: media.results, settings, calendarConnected: Boolean(calendarFeed?.value) });
 }
 
 export async function POST(request: Request) {
@@ -42,6 +44,21 @@ export async function POST(request: Request) {
   if (action === "saveSettings") {
     await db.prepare("INSERT INTO settings (key, value) VALUES ('site', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value").bind(JSON.stringify(body.settings)).run();
     return Response.json({ success: true });
+  }
+  if (action === "saveCalendarFeed") {
+    const feedUrl = String(body.feedUrl || "").trim();
+    if (!feedUrl) {
+      await db.prepare("DELETE FROM settings WHERE key = 'google_calendar_ical_url'").run();
+      return Response.json({ success: true, connected: false });
+    }
+    if (!validateGoogleCalendarUrl(feedUrl)) return Response.json({ error: "Paste the Secret address in iCal format from Google Calendar." }, { status: 400 });
+    try {
+      await fetchGoogleCalendar(feedUrl);
+    } catch (error) {
+      return Response.json({ error: error instanceof Error ? error.message : "Google Calendar connection failed" }, { status: 400 });
+    }
+    await db.prepare("INSERT INTO settings (key, value) VALUES ('google_calendar_ical_url', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value").bind(feedUrl).run();
+    return Response.json({ success: true, connected: true });
   }
   if (action === "saveProduct") {
     const p = body.product as Record<string, unknown>;
