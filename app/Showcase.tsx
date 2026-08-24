@@ -25,17 +25,34 @@ type SelectedItem =
   | { type: "service"; item: Service }
   | null;
 
-const financialCategories = new Set(["Banking", "Payments", "Lending", "Wallets", "Cards"]);
-const intelligenceCategories = new Set(["AI", "Cybersecurity", "Compliance"]);
+const categoryImages: Record<string, string> = {
+  Banking: "/card-banking.jpg",
+  Payments: "/card-banking.jpg",
+  Lending: "/card-banking.jpg",
+  Wallets: "/card-banking.jpg",
+  Cards: "/card-banking.jpg",
+  AI: "/card-ai.jpg",
+  Cybersecurity: "/card-cybersecurity.jpg",
+  Compliance: "/card-cybersecurity.jpg",
+  Government: "/card-government.jpg",
+  PropTech: "/card-proptech.jpg",
+  Travel: "/card-travel.jpg",
+  Education: "/card-education.jpg",
+  Enterprise: "/card-enterprise.jpg",
+};
 
-function productImage(category: string) {
-  if (financialCategories.has(category)) return "/catalogue-finance.png";
-  if (intelligenceCategories.has(category)) return "/catalogue-intelligence.png";
-  return "/catalogue-enterprise.png";
+function productImage(product: Product) {
+  if (product.thumbnailUrl && !product.thumbnailUrl.startsWith("/catalogue-")) return product.thumbnailUrl;
+  return categoryImages[product.category] || "/card-enterprise.jpg";
 }
 
-function serviceImage(index: number) {
-  return ["/catalogue-intelligence.png", "/catalogue-enterprise.png", "/catalogue-finance.png", "/catalogue-intelligence.png"][index % 4];
+function serviceImage(service: Service, index = 0) {
+  if (service.thumbnailUrl && !service.thumbnailUrl.startsWith("/catalogue-")) return service.thumbnailUrl;
+  const name = service.name.toLowerCase();
+  if (name.includes("cyber")) return "/card-cybersecurity.jpg";
+  if (name.includes("devops")) return "/card-devops.jpg";
+  if (name.includes("resource") || name.includes("staff")) return "/card-team.jpg";
+  return ["/card-enterprise.jpg", "/card-devops.jpg", "/card-team.jpg"][index % 3];
 }
 
 function videoEmbedUrl(url: string) {
@@ -112,6 +129,12 @@ export default function Showcase() {
   );
 
   const openMeeting = () => catalogue.settings.meetingEnabled && setMeetingOpen(true);
+  const chooseJourney = (nextCategory: string) => {
+    setMode("products");
+    setCategory(nextCategory);
+    setSearch("");
+    requestAnimationFrame(() => document.getElementById("catalogue")?.scrollIntoView({ behavior: "smooth" }));
+  };
 
   return (
     <main className="catalog-app">
@@ -147,6 +170,31 @@ export default function Showcase() {
               <img src="/finova-cover.png" alt="MYTM digital lending and AI product experience" />
               <div><strong>{catalogue.products.length}+</strong><span>Products</span></div>
               <div><strong>{catalogue.services.length}</strong><span>Services</span></div>
+            </div>
+          </section>
+
+          <section className="executive-dashboard" aria-labelledby="executive-dashboard-title">
+            <div className="dashboard-heading">
+              <div><span><i /> LIVE CATALOGUE INTELLIGENCE</span><h2 id="executive-dashboard-title">Navigate MYTM by business priority.</h2></div>
+              <p>A decision-ready view of the products, services and expertise available to accelerate your next digital initiative.</p>
+            </div>
+            <div className="dashboard-stats" aria-label="Catalogue statistics">
+              <article><small>Digital products</small><strong>{catalogue.products.length}</strong><span>Across {Math.max(1, categories.length - 1)} solution categories</span></article>
+              <article><small>Expert services</small><strong>{catalogue.services.length}</strong><span>From strategy through delivery</span></article>
+              <article><small>Featured solutions</small><strong>{catalogue.products.filter((product) => product.featured).length}</strong><span>Curated for faster discovery</span></article>
+              <article><small>Meeting journey</small><strong>1:1</strong><span>Direct access to MYTM specialists</span></article>
+            </div>
+            <div className="dashboard-journeys" aria-label="Explore catalogue by priority">
+              {[
+                ["01", "Banking & payments", "Banking", "Modern financial infrastructure"],
+                ["02", "Lending & collections", "Lending", "End-to-end credit technology"],
+                ["03", "AI & intelligence", "AI", "Decision-ready automation"],
+                ["04", "Security & compliance", "Compliance", "Trust, identity and resilience"],
+              ].map(([number, title, journeyCategory, description]) => (
+                <button key={title} onClick={() => chooseJourney(journeyCategory)}>
+                  <span>{number}</span><div><strong>{title}</strong><small>{description}</small></div><i>↗</i>
+                </button>
+              ))}
             </div>
           </section>
 
@@ -281,7 +329,7 @@ function ProductCard({ product, onOpen }: { product: Product; onOpen: () => void
   return (
     <article className="catalog-card">
       <button className="card-image-button" onClick={onOpen} aria-label={`View ${product.name}`}>
-        <img src={product.thumbnailUrl || productImage(product.category)} alt={`${product.name} catalogue visual`} />
+        <img src={productImage(product)} alt={`${product.name} catalogue visual`} loading="lazy" decoding="async" />
         <span className="card-category">{product.category}</span>
         {product.featured && <span className="card-featured">Featured</span>}
       </button>
@@ -302,7 +350,7 @@ function ServiceCard({ service, index, onOpen }: { service: Service; index: numb
   return (
     <article className="catalog-card service-catalog-card">
       <button className="card-image-button" onClick={onOpen} aria-label={`View ${service.name}`}>
-        <img src={service.thumbnailUrl || serviceImage(index)} alt={`${service.name} service visual`} />
+        <img src={serviceImage(service, index)} alt={`${service.name} service visual`} loading="lazy" decoding="async" />
         <span className="card-category">Service</span>
       </button>
       <div className="catalog-card-body">
@@ -321,13 +369,13 @@ function ProductPanel({ product, onClose, onMeeting, onDeck }: { product: Produc
     <div className="panel-backdrop" role="button" tabIndex={0} aria-label="Close product details" onKeyDown={(event) => event.key === "Escape" && onClose()} onMouseDown={(event) => event.target === event.currentTarget && onClose()}>
       <aside className="detail-panel" role="dialog" aria-modal="true" aria-label={product.name}>
         <button className="panel-close" onClick={onClose} aria-label="Close">×</button>
-        <div className="detail-picture"><img src={product.thumbnailUrl || productImage(product.category)} alt="" /><span>{product.category}</span></div>
+        <div className="detail-picture"><img src={productImage(product)} alt="" /><span>{product.category}</span></div>
         <div className="detail-content">
           <small>MYTM PRODUCT</small>
           <h2>{product.name}</h2>
           <p className="detail-lead">{product.shortDescription}</p>
           <p className="detail-description">{product.fullDescription}</p>
-          {product.videoUrl && <section className="detail-media"><h3>Product video</h3>{isDirectVideo(product.videoUrl) ? <video controls playsInline preload="metadata" poster={product.thumbnailUrl || productImage(product.category)} src={product.videoUrl}><track kind="captions" src="/empty.vtt" srcLang="en" label="English" /></video> : embedUrl ? <iframe title={`${product.name} video`} src={embedUrl} allow="autoplay; fullscreen; picture-in-picture" allowFullScreen /> : <a href={product.videoUrl} target="_blank" rel="noreferrer">Watch product video ↗</a>}</section>}
+          {product.videoUrl && <section className="detail-media"><h3>Product video</h3>{isDirectVideo(product.videoUrl) ? <video controls playsInline preload="metadata" poster={productImage(product)} src={product.videoUrl}><track kind="captions" src="/empty.vtt" srcLang="en" label="English" /></video> : embedUrl ? <iframe title={`${product.name} video`} src={embedUrl} allow="autoplay; fullscreen; picture-in-picture" allowFullScreen /> : <a href={product.videoUrl} target="_blank" rel="noreferrer">Watch product video ↗</a>}</section>}
           <section><h3>Key features</h3><div className="feature-list">{product.features.map((feature) => <div key={feature}><i>✓</i><span>{feature}</span></div>)}</div></section>
           <section><h3>Business benefits</h3><div className="benefit-list">{product.benefits.map((benefit) => <span key={benefit}>{benefit}</span>)}</div></section>
         </div>
@@ -343,10 +391,10 @@ function ServicePanel({ service, onClose, onMeeting }: { service: Service; onClo
     <div className="panel-backdrop" role="button" tabIndex={0} aria-label="Close service details" onKeyDown={(event) => event.key === "Escape" && onClose()} onMouseDown={(event) => event.target === event.currentTarget && onClose()}>
       <aside className="detail-panel" role="dialog" aria-modal="true" aria-label={service.name}>
         <button className="panel-close" onClick={onClose} aria-label="Close">×</button>
-        <div className="detail-picture"><img src={service.thumbnailUrl || "/catalogue-enterprise.png"} alt="" /><span>Professional service</span></div>
+        <div className="detail-picture"><img src={serviceImage(service)} alt="" /><span>Professional service</span></div>
         <div className="detail-content">
           <small>MYTM SERVICE</small><h2>{service.name}</h2><p className="detail-lead">{service.shortDescription}</p>
-          {service.videoUrl && <section className="detail-media"><h3>Service video</h3>{isDirectVideo(service.videoUrl) ? <video controls playsInline preload="metadata" poster={service.thumbnailUrl || "/catalogue-enterprise.png"} src={service.videoUrl}><track kind="captions" src="/empty.vtt" srcLang="en" label="English" /></video> : embedUrl ? <iframe title={`${service.name} video`} src={embedUrl} allow="autoplay; fullscreen; picture-in-picture" allowFullScreen /> : <a href={service.videoUrl} target="_blank" rel="noreferrer">Watch service video ↗</a>}</section>}
+          {service.videoUrl && <section className="detail-media"><h3>Service video</h3>{isDirectVideo(service.videoUrl) ? <video controls playsInline preload="metadata" poster={serviceImage(service)} src={service.videoUrl}><track kind="captions" src="/empty.vtt" srcLang="en" label="English" /></video> : embedUrl ? <iframe title={`${service.name} video`} src={embedUrl} allow="autoplay; fullscreen; picture-in-picture" allowFullScreen /> : <a href={service.videoUrl} target="_blank" rel="noreferrer">Watch service video ↗</a>}</section>}
           <section><h3>Capabilities</h3><div className="feature-list">{service.features.map((feature) => <div key={feature}><i>✓</i><span>{feature}</span></div>)}</div></section>
         </div>
         <div className="detail-actions">{service.pdfUrl && <button className="outline-action" onClick={() => window.open(service.pdfUrl, "_blank", "noopener,noreferrer")}>View deck</button>}<button className="red-action" onClick={onMeeting}>{service.cta || "Book a consultation"}</button></div>
