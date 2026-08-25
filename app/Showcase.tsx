@@ -4,6 +4,8 @@ import { FormEvent, useEffect, useState } from "react";
 import {
   ArrowRight,
   Bank,
+  CaretLeft,
+  CaretRight,
   CardsThree,
   CheckCircle,
   Cube,
@@ -42,6 +44,14 @@ type SelectedItem =
 type AssistantRecommendation = { type: "product" | "service"; id: number; name: string; category: string };
 type AssistantMessage = { role: "user" | "assistant"; content: string; recommendations?: AssistantRecommendation[]; poweredBy?: "openai" | "catalogue" };
 type RequestKind = "demo" | "pdf";
+
+const heroSlides = [
+  { eyebrow: "FINOVA INTELLIGENCE", title: "AI Financial Analyst", copy: "Decision-ready financial intelligence for faster forecasting, analysis and executive action.", image: "/product-financial-analyst.jpg", match: /financial analyst/i, accent: "AI · FINANCE" },
+  { eyebrow: "DIGITAL LENDING", title: "LOS / LMS", copy: "A connected origination and servicing platform for the complete credit lifecycle.", image: "/product-los-lms.jpg", match: /los\s*\/\s*lms/i, accent: "LENDING · AUTOMATION" },
+  { eyebrow: "TRUSTED COMPLIANCE", title: "CompliClear AML/KYC", copy: "Automated identity checks, risk screening and ongoing compliance monitoring in one flow.", image: "/product-complyclear.jpg", match: /compliclear/i, accent: "AML · KYC" },
+  { eyebrow: "SMARTER RECOVERY", title: "AI Collection Management", copy: "Prioritize accounts, automate outreach and improve recovery performance with intelligent insights.", image: "/product-collection-management.jpg", match: /collection management/i, accent: "AI · COLLECTIONS" },
+  { eyebrow: "DIGITAL RESILIENCE", title: "Cyber Security", copy: "Enterprise protection, continuous monitoring and operational resilience for critical platforms.", image: "/card-cybersecurity.jpg", match: /cyber security/i, accent: "SECURITY · TRUST" },
+] as const;
 
 const categoryImages: Record<string, string> = {
   Banking: "/card-banking.jpg",
@@ -111,6 +121,7 @@ export default function Showcase() {
   const [welcomeOpen, setWelcomeOpen] = useState(true);
   const [assistantOpen, setAssistantOpen] = useState(false);
   const [requestKind, setRequestKind] = useState<RequestKind>("demo");
+  const [heroSlide, setHeroSlide] = useState(0);
 
   useEffect(() => {
     fetch("/api/catalog")
@@ -160,6 +171,12 @@ export default function Showcase() {
     elements.forEach((element) => observer.observe(element));
     return () => observer.disconnect();
   }, [mode, category, search, catalogue]);
+
+  useEffect(() => {
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    const timer = window.setInterval(() => setHeroSlide((current) => (current + 1) % heroSlides.length), 6_500);
+    return () => window.clearInterval(timer);
+  }, []);
 
   const productPriority = ["AI Financial Analyst", "AI Collection Management", "CompliClear AML/KYC Solution", "LOS / LMS"];
   const products = catalogue.products.filter(
@@ -211,6 +228,13 @@ export default function Showcase() {
     });
   };
 
+  const exploreHeroSlide = () => {
+    const product = catalogue.products.find((item) => heroSlides[heroSlide].match.test(item.name));
+    if (!product) return;
+    selectProduct(product, "demo");
+    window.requestAnimationFrame(() => document.getElementById("catalogue")?.scrollIntoView({ behavior: "smooth", block: "start" }));
+  };
+
   return (
     <main className="product-os">
       <header className="os-header">
@@ -234,12 +258,22 @@ export default function Showcase() {
         </div>
       </header>
 
-      <section className="os-hero" aria-labelledby="product-os-title">
-        <img src="/product-os-hero.jpg" alt="Composable MYTM product ecosystem" />
+      <section className="os-hero os-hero-carousel" aria-labelledby="product-os-title">
+        <div className="os-hero-media" aria-hidden="true">
+          {heroSlides.map((slide, index) => <img key={slide.title} className={index === heroSlide ? "active" : ""} src={slide.image} alt="" />)}
+        </div>
+        <div className="os-hero-scrim" />
         <div className="os-hero-copy">
-          <span>MODULAR SPECTRUM</span>
-          <h1 id="product-os-title">Product <em>OS</em></h1>
-          <p>Composable building blocks for modern financial ecosystems.<br />Select. Connect. Launch.</p>
+          <span>{heroSlides[heroSlide].eyebrow}</span>
+          <h1 id="product-os-title">{heroSlides[heroSlide].title}</h1>
+          <p>{heroSlides[heroSlide].copy}</p>
+          <div className="os-hero-actions"><button onClick={exploreHeroSlide}>Explore solution <ArrowRight size={17} /></button><small>{heroSlides[heroSlide].accent}</small></div>
+        </div>
+        <div className="os-hero-controls">
+          <button onClick={() => setHeroSlide((heroSlide - 1 + heroSlides.length) % heroSlides.length)} aria-label="Previous showcase"><CaretLeft size={18} /></button>
+          <div>{heroSlides.map((slide, index) => <button key={slide.title} className={index === heroSlide ? "active" : ""} onClick={() => setHeroSlide(index)} aria-label={`Show ${slide.title}`} />)}</div>
+          <span>{String(heroSlide + 1).padStart(2, "0")} / {String(heroSlides.length).padStart(2, "0")}</span>
+          <button onClick={() => setHeroSlide((heroSlide + 1) % heroSlides.length)} aria-label="Next showcase"><CaretRight size={18} /></button>
         </div>
       </section>
 
@@ -272,7 +306,6 @@ export default function Showcase() {
                 product={activeProduct}
                 kind={requestKind}
                 onKindChange={(kind) => selectProduct(activeProduct, kind)}
-                onTalkToSales={openMeeting}
                 onClose={clearProductSelection}
               />
             )}
@@ -349,7 +382,7 @@ function OSServiceCard({ service, index, onOpen }: { service: Service; index: nu
   );
 }
 
-function OSProductRail({ product, kind, onKindChange, onTalkToSales, onClose }: { product: Product; kind: RequestKind; onKindChange: (kind: RequestKind) => void; onTalkToSales: () => void; onClose: () => void }) {
+function OSProductRail({ product, kind, onKindChange, onClose }: { product: Product; kind: RequestKind; onKindChange: (kind: RequestKind) => void; onClose: () => void }) {
   return (
     <aside className="os-product-rail" id="product-request-panel" aria-label={`${product.name} request panel`}>
       <button className="os-rail-close" onClick={onClose} aria-label="Close product request"><X size={18} /></button>
@@ -365,12 +398,12 @@ function OSProductRail({ product, kind, onKindChange, onTalkToSales, onClose }: 
         <button role="tab" aria-selected={kind === "demo"} className={kind === "demo" ? "active" : ""} onClick={() => onKindChange("demo")}>Request Demo</button>
         <button role="tab" aria-selected={kind === "pdf"} className={kind === "pdf" ? "active" : ""} onClick={() => onKindChange("pdf")}>Request PDF</button>
       </div>
-      <LeadRequestForm key={`${product.id}-${kind}`} product={product} kind={kind} onTalkToSales={onTalkToSales} />
+      <LeadRequestForm key={`${product.id}-${kind}`} product={product} kind={kind} />
     </aside>
   );
 }
 
-function LeadRequestForm({ product, kind, onTalkToSales }: { product: Product; kind: RequestKind; onTalkToSales: () => void }) {
+function LeadRequestForm({ product, kind }: { product: Product; kind: RequestKind }) {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [submitted, setSubmitted] = useState(false);
@@ -388,7 +421,7 @@ function LeadRequestForm({ product, kind, onTalkToSales }: { product: Product; k
           ...values,
           phone: "",
           company: "",
-          notes: kind === "demo" ? "Customer requested a product demonstration." : "Customer requested the product PDF.",
+          notes: String(values.notes || "").trim(),
           requestType: kind === "demo" ? "Demo" : "PDF",
           source: kind === "demo" ? "Demo Request" : "PDF Request",
           contentAccessed: product.name,
@@ -413,7 +446,6 @@ function LeadRequestForm({ product, kind, onTalkToSales }: { product: Product; k
         <h3>{kind === "demo" ? "Demo request received" : "Your PDF is ready"}</h3>
         <p>{kind === "demo" ? "Our product team has your preferred date and will confirm the session by email." : "Your request is saved in the MYTM backoffice."}</p>
         {kind === "pdf" && product.pdfUrl ? <a href={product.pdfUrl} target="_blank" rel="noreferrer"><FilePdf size={19} /> Open product PDF</a> : null}
-        {kind === "demo" ? <button onClick={onTalkToSales}>Choose a time now</button> : null}
       </div>
     );
   }
@@ -426,6 +458,7 @@ function LeadRequestForm({ product, kind, onTalkToSales }: { product: Product; k
         <label>Designation<input name="designation" autoComplete="organization-title" required placeholder="Your role" /></label>
         {kind === "demo" && <label>Preferred date<input name="preferredDate" type="date" min={new Date().toISOString().slice(0, 10)} required /></label>}
       </div>
+      <label className="os-notes-field">Notes <span>Optional</span><textarea name="notes" rows={3} placeholder="Share any requirement, priority or question for our team" /></label>
       {kind === "pdf" && <p className="os-date-note"><FilePdf size={16} /> PDF requests do not require a date.</p>}
       {error && <p className="os-request-error" role="alert">{error}</p>}
       <button className="os-submit" disabled={saving}>{saving ? "Submitting…" : "Submit request"}</button>

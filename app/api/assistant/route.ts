@@ -19,35 +19,47 @@ function allowRequest(request: Request) {
 }
 
 function tokens(value: string) {
-  return Array.from(new Set(value.toLowerCase().replace(/[^a-z0-9]+/g, " ").split(" ").filter((token) => token.length > 2)));
+  const stopWords = new Set(["and", "the", "for", "with", "need", "want", "our", "your", "solution", "platform", "help", "about", "from", "that", "this"]);
+  return Array.from(new Set(value.toLowerCase().replace(/[^a-z0-9]+/g, " ").split(" ").filter((token) => token.length > 2 && !stopWords.has(token))));
 }
 
 function recommend(message: string, items: Recommendation[]) {
   const query = tokens(message);
-  const intentBoosts: Record<string, string[]> = {
-    lending: ["loan", "los", "lms", "collection", "credit"],
-    payments: ["payment", "wallet", "card", "banking", "merchant"],
-    ai: ["ai", "analyst", "automation", "intelligence", "forecast"],
-    compliance: ["aml", "kyc", "compliance", "fraud", "identity", "risk"],
-    cybersecurity: ["security", "cyber", "threat", "audit", "protection"],
-  };
-  return items.map((item) => {
+  const lower = message.toLowerCase();
+  const intentProfiles = [
+    { key: "lending", triggers: ["lending", "lend", "loan", "credit", "financing", "borrower", "origination"], categories: ["lending"], terms: ["loan", "lending", "financing", "los", "lms", "credit", "origination", "management"] },
+    { key: "collections", triggers: ["collection", "collections", "recovery", "delinquency", "debt"], categories: [], terms: ["collection", "collections", "recovery", "delinquency", "prioritization"] },
+    { key: "payments", triggers: ["payment", "payments", "merchant", "checkout", "settlement", "reconciliation", "wallet", "card"], categories: ["payments", "wallets", "cards"], terms: ["payment", "wallet", "card", "merchant", "settlement", "aggregation"] },
+    { key: "banking", triggers: ["bank", "banking", "core banking", "agent banking", "open banking"], categories: ["banking"], terms: ["bank", "banking", "core", "agent", "account"] },
+    { key: "ai", triggers: ["ai", "artificial intelligence", "forecast", "analyst", "automation", "insight"], categories: ["ai"], terms: ["ai", "analyst", "automation", "intelligence", "forecast", "agentic"] },
+    { key: "compliance", triggers: ["aml", "kyc", "compliance", "fraud", "identity verification", "risk screening"], categories: ["compliance"], terms: ["aml", "kyc", "compliance", "fraud", "identity", "risk"] },
+    { key: "cybersecurity", triggers: ["security", "cyber", "threat", "vulnerability", "protection", "siem"], categories: ["cybersecurity"], terms: ["security", "cyber", "threat", "audit", "protection", "siem"] },
+    { key: "enterprise", triggers: ["enterprise", "workflow", "appointment", "operations", "digital transformation"], categories: ["enterprise"], terms: ["enterprise", "workflow", "appointment", "operations", "transformation"] },
+  ];
+  const matchedIntents = intentProfiles.filter((profile) => profile.triggers.some((trigger) => lower.includes(trigger)));
+  const ranked = items.map((item) => {
     const haystack = `${item.name} ${item.category} ${item.description}`.toLowerCase();
-    let score = query.reduce((total, token) => total + (haystack.includes(token) ? (item.name.toLowerCase().includes(token) ? 5 : 2) : 0), 0);
-    for (const [category, words] of Object.entries(intentBoosts)) {
-      if (words.some((word) => query.includes(word)) && haystack.includes(category)) score += 5;
-      score += words.filter((word) => query.includes(word) && haystack.includes(word)).length * 2;
+    const itemName = item.name.toLowerCase();
+    const itemCategory = item.category.toLowerCase();
+    let score = query.reduce((total, token) => total + (haystack.includes(token) ? (itemName.includes(token) ? 6 : 2) : 0), 0);
+    for (const profile of matchedIntents) {
+      if (profile.categories.some((category) => itemCategory.includes(category))) score += 18;
+      score += profile.terms.reduce((total, term) => total + (itemName.includes(term) ? 7 : haystack.includes(term) ? 3 : 0), 0);
     }
     return { item, score };
-  }).sort((a, b) => b.score - a.score).slice(0, 3).map(({ item }) => item);
+  }).filter(({ score }) => score > 0).sort((a, b) => b.score - a.score || a.item.name.localeCompare(b.item.name));
+  const relevanceFloor = Math.max(4, (ranked[0]?.score || 0) * 0.4);
+  return ranked.filter(({ score }) => score >= relevanceFloor).slice(0, 3).map(({ item }) => item);
 }
 
 function fallbackReply(message: string, recommendations: Recommendation[]) {
   const lower = message.toLowerCase();
   if (/^(hi|hello|hey|salam|assalam)/.test(lower)) return "Hello — I’m the MYTM catalogue advisor. Tell me the business challenge you want to solve, and I’ll guide you to the most relevant products and services.";
   if (!recommendations.length) return "I can help with digital banking, payments, lending, AI, AML/KYC, cybersecurity and technology delivery. Tell me your goal, sector or current challenge and I’ll narrow the catalogue for you.";
-  const [first, second] = recommendations;
-  return `Based on your requirement, I’d start with ${first.name}. ${first.description}${second ? ` You may also want to explore ${second.name} as a complementary option.` : ""} Open a recommendation below for details, or book a conversation with MYTM for a tailored walkthrough.`;
+  const [first] = recommendations;
+  const names = recommendations.map((item) => item.name);
+  const alternatives = names.length > 1 ? ` I also found ${names.slice(1).join(" and ")} for this requirement.` : "";
+  return `For your requirement, the strongest match is ${first.name}. ${first.description}${alternatives} Open any recommendation below to compare the relevant product details.`;
 }
 
 async function openAIReply(message: string, history: ChatTurn[], items: Recommendation[], recommendations: Recommendation[]) {

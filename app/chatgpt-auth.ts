@@ -49,7 +49,8 @@ export async function requireChatGPTUser(
 }
 
 export function isMYTMAdmin(user: ChatGPTUser): boolean {
-  return user.email.trim().toLowerCase().endsWith("@mytm.co");
+  const email = user.email.trim().toLowerCase();
+  return email.endsWith("@mytm.co") || email.endsWith("@mytm.com");
 }
 
 export async function requireMYTMAdmin(

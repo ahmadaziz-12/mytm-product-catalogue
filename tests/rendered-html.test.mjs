@@ -21,7 +21,8 @@ test("server-renders the MYTM Product OS catalogue in browsing mode", async () =
 
   const html = await response.text();
   assert.match(html, /class="product-os"/);
-  assert.match(html, /Product <em>OS<\/em>/);
+  assert.match(html, /AI Financial Analyst/);
+  assert.match(html, /aria-label="Show LOS \/ LMS"/);
   assert.match(html, /Talk to Sales/);
   assert.match(html, /Finova AI Financial Analyst/);
   assert.match(html, /AI Collection Management/);
@@ -30,11 +31,12 @@ test("server-renders the MYTM Product OS catalogue in browsing mode", async () =
 });
 
 test("opens product-specific forms and persists their details to the backoffice", async () => {
-  const [leadRoute, store, admin, showcase] = await Promise.all([
+  const [leadRoute, store, admin, showcase, assistant] = await Promise.all([
     readFile(new URL("../app/api/leads/route.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/api/_store.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/admin/AdminClient.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/Showcase.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/api/assistant/route.ts", import.meta.url), "utf8"),
   ]);
 
   assert.match(leadRoute, /requestType === "Demo"/);
@@ -50,4 +52,28 @@ test("opens product-specific forms and persists their details to the backoffice"
   assert.match(showcase, /Preferred date/);
   assert.match(showcase, /Designation/);
   assert.match(showcase, /product-request-panel/);
+  assert.match(showcase, /name="notes"/);
+  assert.match(showcase, /Notes <span>Optional<\/span>/);
+  assert.doesNotMatch(showcase, /Choose a time now/);
+  assert.match(showcase, /const heroSlides = \[/);
+  assert.match(showcase, /CompliClear AML\/KYC/);
+  assert.match(admin, /LeadDetailsModal/);
+  assert.match(admin, /Copy all details/);
+  assert.match(admin, /DEMO REQUEST PIPELINE/);
+  assert.match(admin, /Connect your Calendly event type to the Google Calendar/);
+  assert.match(assistant, /relevanceFloor/);
+  assert.match(assistant, /key: "collections"/);
+  assert.match(assistant, /stopWords/);
+});
+
+test("keeps production admin access restricted to MYTM accounts", async () => {
+  const [auth, adminPage, adminRoute] = await Promise.all([
+    readFile(new URL("../app/chatgpt-auth.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/admin/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/api/admin/route.ts", import.meta.url), "utf8"),
+  ]);
+  assert.match(auth, /endsWith\("@mytm\.co"\)/);
+  assert.match(auth, /endsWith\("@mytm\.com"\)/);
+  assert.match(adminPage, /process\.env\.NODE_ENV === "development"/);
+  assert.match(adminRoute, /process\.env\.NODE_ENV === "development"/);
 });
