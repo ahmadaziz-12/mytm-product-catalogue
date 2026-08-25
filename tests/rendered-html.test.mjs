@@ -28,6 +28,9 @@ test("server-renders the MYTM Product OS catalogue in browsing mode", async () =
   assert.match(html, /AI Collection Management/);
   assert.match(html, /CompliClear AML\/KYC/);
   assert.match(html, /BUILD WHAT FINANCE NEEDS NEXT/);
+  assert.match(html, /SOLUTIONS BY AMBITION/);
+  assert.match(html, /Start with the outcome you need/);
+  assert.match(html, /FROM AMBITION TO OPERATIONS/);
   assert.match(html, /Backoffice admin/);
   assert.doesNotMatch(html, /Touch anywhere to explore/);
   assert.doesNotMatch(html, /class="os-product-rail"/);
@@ -61,6 +64,8 @@ test("opens product-specific forms and persists their details to the backoffice"
   assert.match(showcase, /const heroSlides = \[/);
   assert.match(showcase, /CompliClear AML\/KYC/);
   assert.match(showcase, /className="os-footer"/);
+  assert.match(showcase, /exploreCategory\("Lending"\)/);
+  assert.match(showcase, /How MYTM delivers/);
   assert.doesNotMatch(showcase, /setWelcomeOpen/);
   assert.doesNotMatch(showcase, /idle-experience/);
   assert.match(admin, /LeadDetailsModal/);

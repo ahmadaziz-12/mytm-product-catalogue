@@ -218,6 +218,14 @@ export default function Showcase() {
     window.requestAnimationFrame(() => document.getElementById("catalogue")?.scrollIntoView({ behavior: "smooth", block: "start" }));
   };
 
+  const exploreCategory = (nextCategory: string) => {
+    setMode("products");
+    setCategory(nextCategory);
+    setSearch("");
+    clearProductSelection();
+    window.requestAnimationFrame(() => document.getElementById("catalogue")?.scrollIntoView({ behavior: "smooth", block: "start" }));
+  };
+
   return (
     <main className="product-os">
       <header className="os-header">
@@ -302,6 +310,25 @@ export default function Showcase() {
         )}
       </section>
 
+      <section className="os-outcomes" aria-labelledby="outcomes-title">
+        <div className="os-content-heading"><span>SOLUTIONS BY AMBITION</span><h2 id="outcomes-title">Start with the outcome you need.</h2><p>Move from a business priority to the most relevant MYTM products—without searching through technical categories.</p></div>
+        <div className="os-outcome-grid">
+          <article><img src="/product-los-lms.jpg" alt="Digital lending platform" loading="lazy" /><div><small>01 · LENDING</small><h3>Launch and scale digital lending</h3><p>Origination, credit workflows and loan servicing designed as one connected journey.</p><button onClick={() => exploreCategory("Lending")}>Explore lending solutions <ArrowRight size={16} /></button></div></article>
+          <article><img src="/product-complyclear.jpg" alt="Digital compliance operations" loading="lazy" /><div><small>02 · COMPLIANCE</small><h3>Build trust into every transaction</h3><p>AML, KYC and screening capabilities that support safer digital growth.</p><button onClick={() => exploreCategory("Compliance")}>Explore compliance <ArrowRight size={16} /></button></div></article>
+          <article><img src="/product-financial-analyst.jpg" alt="AI-powered financial intelligence" loading="lazy" /><div><small>03 · INTELLIGENCE</small><h3>Turn financial data into action</h3><p>AI-assisted analysis, forecasting and collections for faster, better decisions.</p><button onClick={() => exploreCategory("AI")}>Explore AI products <ArrowRight size={16} /></button></div></article>
+          <article><img src="/catalogue-finance.png" alt="Modern digital payments" loading="lazy" /><div><small>04 · PAYMENTS</small><h3>Modernize payment experiences</h3><p>Flexible payment infrastructure for institutions, merchants and digital ecosystems.</p><button onClick={() => exploreCategory("Payments")}>Explore payments <ArrowRight size={16} /></button></div></article>
+        </div>
+      </section>
+
+      <section className="os-delivery" id="delivery">
+        <div className="os-delivery-intro"><span>FROM AMBITION TO OPERATIONS</span><h2>Products are only powerful when they work in the real world.</h2><p>MYTM brings product thinking, engineering and financial-services context together—so teams can move from exploration to implementation with clarity.</p><button onClick={() => { setMode("services"); clearProductSelection(); document.getElementById("catalogue")?.scrollIntoView({ behavior: "smooth" }); }}>Explore MYTM services <ArrowRight size={17} /></button></div>
+        <div className="os-delivery-steps">
+          <article><span>01</span><div><small>DISCOVER</small><h3>Define the right opportunity</h3><p>Align the customer problem, business goal and operating requirements.</p></div></article>
+          <article><span>02</span><div><small>DESIGN &amp; BUILD</small><h3>Shape a practical solution</h3><p>Combine MYTM products, integrations and specialist delivery capabilities.</p></div></article>
+          <article><span>03</span><div><small>DEPLOY &amp; EVOLVE</small><h3>Move confidently into production</h3><p>Launch with a foundation designed for continuous improvement and scale.</p></div></article>
+        </div>
+      </section>
+
       <section className="os-partners" id="partners">
         <div><span>TRUSTED ECOSYSTEM</span><h2>Our partners &amp; clients</h2><p>Built alongside organizations shaping payments, banking, lending and digital transformation.</p></div>
         <img src="/mytm-partners-clients.png" alt="MYTM partners and clients" />
@@ -314,7 +341,7 @@ export default function Showcase() {
         </section>
         <div className="os-footer-main">
           <div className="os-footer-brand"><img src="/mytm-registered-logo.png" alt="MYTM" /><p>Technology, products and delivery expertise for modern financial institutions.</p><span><i /> PRODUCT CATALOGUE · ONLINE</span></div>
-          <nav aria-label="Footer catalogue navigation"><strong>Explore</strong><button onClick={() => { setMode("products"); clearProductSelection(); document.getElementById("catalogue")?.scrollIntoView({ behavior: "smooth" }); }}>Products</button><button onClick={() => { setMode("services"); clearProductSelection(); document.getElementById("catalogue")?.scrollIntoView({ behavior: "smooth" }); }}>Services</button><button onClick={() => document.getElementById("partners")?.scrollIntoView({ behavior: "smooth" })}>Partners &amp; clients</button></nav>
+          <nav aria-label="Footer catalogue navigation"><strong>Explore</strong><button onClick={() => { setMode("products"); clearProductSelection(); document.getElementById("catalogue")?.scrollIntoView({ behavior: "smooth" }); }}>Products</button><button onClick={() => { setMode("services"); clearProductSelection(); document.getElementById("catalogue")?.scrollIntoView({ behavior: "smooth" }); }}>Services</button><button onClick={() => document.getElementById("delivery")?.scrollIntoView({ behavior: "smooth" })}>How MYTM delivers</button><button onClick={() => document.getElementById("partners")?.scrollIntoView({ behavior: "smooth" })}>Partners &amp; clients</button></nav>
           <div><strong>Connect</strong><a href={`mailto:${catalogue.settings.contactEmail}`}>{catalogue.settings.contactEmail}</a>{catalogue.settings.contactNumber && <a href={`tel:${catalogue.settings.contactNumber.replace(/\s/g, "")}`}>{catalogue.settings.contactNumber}</a>}<button onClick={openMeeting}>Schedule a conversation</button></div>
           <div><strong>Workspace</strong><a href="/admin">Backoffice admin</a><button onClick={() => setAssistantOpen(true)}>Ask MYTM AI</button><small>Secure access for MYTM teams</small></div>
         </div>
