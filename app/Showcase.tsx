@@ -1,7 +1,6 @@
 "use client";
 
 import { FormEvent, useEffect, useState } from "react";
-import Link from "next/link";
 import {
   ArrowRight,
   Bank,
@@ -121,9 +120,9 @@ export default function Showcase() {
         const params = new URLSearchParams(window.location.search);
         const productSlug = params.get("product");
         const requested = params.get("request");
-        const initial = data.products.find((product) => product.slug === productSlug)
-          || data.products.find((product) => /financial analyst/i.test(product.name))
-          || data.products[0];
+        const initial = productSlug
+          ? data.products.find((product) => product.slug === productSlug)
+          : undefined;
         if (initial) setSelected({ type: "product", item: initial });
         if (requested === "pdf" || requested === "demo") setRequestKind(requested);
       })
@@ -188,9 +187,15 @@ export default function Showcase() {
     }
   };
 
-  const activeProduct = selected?.type === "product"
-    ? selected.item
-    : catalogue.products.find((product) => /financial analyst/i.test(product.name)) || products[0];
+  const activeProduct = selected?.type === "product" ? selected.item : undefined;
+
+  const clearProductSelection = () => {
+    setSelected(null);
+    const nextUrl = new URL(window.location.href);
+    nextUrl.searchParams.delete("product");
+    nextUrl.searchParams.delete("request");
+    window.history.replaceState({}, "", nextUrl);
+  };
 
   const selectProduct = (product: Product, kind: RequestKind = requestKind) => {
     setSelected({ type: "product", item: product });
@@ -199,20 +204,34 @@ export default function Showcase() {
     nextUrl.searchParams.set("product", product.slug);
     nextUrl.searchParams.set("request", kind);
     window.history.replaceState({}, "", nextUrl);
+    window.requestAnimationFrame(() => {
+      if (window.matchMedia("(max-width: 820px)").matches) {
+        document.getElementById("product-request-panel")?.scrollIntoView({ behavior: "smooth", block: "start" });
+      }
+    });
   };
 
   return (
     <main className="product-os">
       <header className="os-header">
-        <Link className="os-brand" href="/" aria-label="MYTM catalogue home">
+        {/* A native anchor avoids router-only runtime failures when this catalogue is served through the Vercel proxy. */}
+        {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
+        <a className="os-brand" href="/" aria-label="MYTM catalogue home">
           <img src="/mytm-registered-logo.png" alt="MYTM" />
-        </Link>
+        </a>
         <nav className="os-nav" aria-label="Catalogue navigation">
-          <button className={mode === "products" ? "active" : ""} onClick={() => { setMode("products"); document.getElementById("catalogue")?.scrollIntoView({ behavior: "smooth" }); }}>Products</button>
-          <button className={mode === "services" ? "active" : ""} onClick={() => { setMode("services"); document.getElementById("catalogue")?.scrollIntoView({ behavior: "smooth" }); }}>Services</button>
+          <button className={mode === "products" ? "active" : ""} onClick={() => { setMode("products"); clearProductSelection(); document.getElementById("catalogue")?.scrollIntoView({ behavior: "smooth" }); }}>Products</button>
+          <button className={mode === "services" ? "active" : ""} onClick={() => { setMode("services"); clearProductSelection(); document.getElementById("catalogue")?.scrollIntoView({ behavior: "smooth" }); }}>Services</button>
           <button onClick={() => document.getElementById("partners")?.scrollIntoView({ behavior: "smooth" })}>Partners &amp; Clients</button>
         </nav>
-        <button className="os-sales" onClick={openMeeting}>Talk to Sales</button>
+        <div className="os-header-actions">
+          <label className="os-search os-header-search">
+            <MagnifyingGlass size={19} />
+            <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder={`Search ${mode}`} aria-label={`Search ${mode}`} />
+            {search && <button onClick={() => setSearch("")} aria-label="Clear search"><X size={15} /></button>}
+          </label>
+          <button className="os-sales" onClick={openMeeting}>Talk to Sales</button>
+        </div>
       </header>
 
       <section className="os-hero" aria-labelledby="product-os-title">
@@ -232,21 +251,16 @@ export default function Showcase() {
                 ["All", Cube], ["AI", Sparkle], ["Compliance", ShieldCheck], ["Lending", Stack],
                 ["Payments", Wallet], ["Banking", Bank], ["Cards", CardsThree], ["Enterprise", Cube],
               ].map(([item, Icon]) => (
-                <button key={String(item)} className={category === item ? "active" : ""} onClick={() => setCategory(String(item))}>
+                <button key={String(item)} className={category === item ? "active" : ""} onClick={() => { setCategory(String(item)); clearProductSelection(); }}>
                   <Icon size={19} weight="duotone" /><span>{item === "All" ? "All Products" : item}</span>
                 </button>
               ))}
             </div>
           ) : <div className="os-section-title"><span>MYTM SERVICES</span><strong>Expertise that moves ideas into production.</strong></div>}
-          <label className="os-search">
-            <MagnifyingGlass size={20} />
-            <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder={`Search ${mode}`} aria-label={`Search ${mode}`} />
-            {search && <button onClick={() => setSearch("")} aria-label="Clear search"><X size={16} /></button>}
-          </label>
         </div>
 
         {mode === "products" ? (
-          <div className="os-workspace">
+          <div className={`os-workspace ${activeProduct ? "has-selection" : "is-browsing"}`}>
             <div className="os-product-grid">
               {products.map((product) => (
                 <OSProductCard key={product.id} product={product} active={activeProduct?.id === product.id} onOpen={() => selectProduct(product)} />
@@ -259,6 +273,7 @@ export default function Showcase() {
                 kind={requestKind}
                 onKindChange={(kind) => selectProduct(activeProduct, kind)}
                 onTalkToSales={openMeeting}
+                onClose={clearProductSelection}
               />
             )}
           </div>
@@ -274,15 +289,15 @@ export default function Showcase() {
         <img src="/mytm-partners-clients.png" alt="MYTM partners and clients" />
       </section>
 
-      <button className="os-ai-trigger" onClick={() => setAssistantOpen(true)}><Robot size={24} weight="duotone" /> Ask MYTM AI</button>
+      <button className={`os-ai-trigger ${activeProduct ? "form-open" : ""}`} onClick={() => setAssistantOpen(true)}><Robot size={24} weight="duotone" /> Ask MYTM AI</button>
 
       <CatalogueAssistant open={assistantOpen} onOpenChange={setAssistantOpen} onRecommendation={openAssistantRecommendation} onMeeting={openMeeting} />
       {selected?.type === "service" && <ServicePanel service={selected.item} onClose={() => setSelected(null)} onMeeting={openMeeting} />}
       {meetingOpen && <MeetingModal settings={catalogue.settings} onClose={() => setMeetingOpen(false)} />}
 
       <nav className="os-mobile-nav" aria-label="Mobile catalogue navigation">
-        <button className={mode === "products" ? "active" : ""} onClick={() => setMode("products")}>Products</button>
-        <button className={mode === "services" ? "active" : ""} onClick={() => setMode("services")}>Services</button>
+        <button className={mode === "products" ? "active" : ""} onClick={() => { setMode("products"); clearProductSelection(); }}>Products</button>
+        <button className={mode === "services" ? "active" : ""} onClick={() => { setMode("services"); clearProductSelection(); }}>Services</button>
         <button onClick={() => document.getElementById("partners")?.scrollIntoView({ behavior: "smooth" })}>Clients</button>
         <button onClick={openMeeting}>Sales</button>
       </nav>
@@ -334,9 +349,10 @@ function OSServiceCard({ service, index, onOpen }: { service: Service; index: nu
   );
 }
 
-function OSProductRail({ product, kind, onKindChange, onTalkToSales }: { product: Product; kind: RequestKind; onKindChange: (kind: RequestKind) => void; onTalkToSales: () => void }) {
+function OSProductRail({ product, kind, onKindChange, onTalkToSales, onClose }: { product: Product; kind: RequestKind; onKindChange: (kind: RequestKind) => void; onTalkToSales: () => void; onClose: () => void }) {
   return (
-    <aside className="os-product-rail" aria-label={`${product.name} request panel`}>
+    <aside className="os-product-rail" id="product-request-panel" aria-label={`${product.name} request panel`}>
+      <button className="os-rail-close" onClick={onClose} aria-label="Close product request"><X size={18} /></button>
       <div className="os-rail-heading">
         <span><Sparkle size={15} weight="fill" /> {product.featured ? "Featured" : product.category}</span>
         <h2>{productDisplayName(product)}</h2>

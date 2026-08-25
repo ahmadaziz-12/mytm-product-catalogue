@@ -14,7 +14,7 @@ async function render() {
   );
 }
 
-test("server-renders the MYTM Product OS catalogue and conversion actions", async () => {
+test("server-renders the MYTM Product OS catalogue in browsing mode", async () => {
   const response = await render();
   assert.equal(response.status, 200);
   assert.match(response.headers.get("content-type") ?? "", /^text\/html\b/i);
@@ -26,17 +26,15 @@ test("server-renders the MYTM Product OS catalogue and conversion actions", asyn
   assert.match(html, /Finova AI Financial Analyst/);
   assert.match(html, /AI Collection Management/);
   assert.match(html, /CompliClear AML\/KYC/);
-  assert.match(html, /Request Demo/);
-  assert.match(html, /Request PDF/);
-  assert.match(html, /Preferred date/);
-  assert.match(html, /Designation/);
+  assert.doesNotMatch(html, /class="os-product-rail"/);
 });
 
-test("persists request-specific lead details and exposes them to the backoffice", async () => {
-  const [leadRoute, store, admin] = await Promise.all([
+test("opens product-specific forms and persists their details to the backoffice", async () => {
+  const [leadRoute, store, admin, showcase] = await Promise.all([
     readFile(new URL("../app/api/leads/route.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/api/_store.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/admin/AdminClient.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/Showcase.tsx", import.meta.url), "utf8"),
   ]);
 
   assert.match(leadRoute, /requestType === "Demo"/);
@@ -47,4 +45,9 @@ test("persists request-specific lead details and exposes them to the backoffice"
   assert.match(admin, /Preferred:/);
   assert.match(admin, /request_type/);
   assert.match(admin, /designation/);
+  assert.match(showcase, /Request Demo/);
+  assert.match(showcase, /Request PDF/);
+  assert.match(showcase, /Preferred date/);
+  assert.match(showcase, /Designation/);
+  assert.match(showcase, /product-request-panel/);
 });
