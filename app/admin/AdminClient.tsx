@@ -11,9 +11,9 @@ type Media = { id: number; filename: string; content_type: string; url: string; 
 type Meeting = { id: string; title: string; start: string; end: string; allDay: boolean; attendeeName: string; attendeeEmail: string; location: string; meetLink: string; description: string; status: "upcoming" | "live" | "completed" | "cancelled" };
 type MeetingFeed = { connected: boolean; meetings: Meeting[]; timeZone: string; updatedAt: string; error?: string };
 type AdminData = { products: Product[]; services: Service[]; leads: Lead[]; media: Media[]; settings: SiteSettings; calendarConnected: boolean };
-type Tab = "Dashboard" | "Products" | "Services" | "Media Library" | "Leads" | "Meetings" | "Calendar Setup" | "Lead Form" | "Website Settings";
+type Tab = "Dashboard" | "Products" | "Product Decks" | "Services" | "Media Library" | "Leads" | "Meetings" | "Calendar Setup" | "Lead Form" | "Website Settings";
 
-const nav: Array<[Tab, string]> = [["Dashboard", "⌂"], ["Products", "◇"], ["Services", "◫"], ["Media Library", "▣"], ["Leads", "◎"], ["Meetings", "◷"], ["Calendar Setup", "□"], ["Lead Form", "≡"], ["Website Settings", "⚙"]];
+const nav: Array<[Tab, string]> = [["Dashboard", "⌂"], ["Products", "◇"], ["Product Decks", "▤"], ["Services", "◫"], ["Media Library", "▣"], ["Leads", "◎"], ["Meetings", "◷"], ["Calendar Setup", "□"], ["Lead Form", "≡"], ["Website Settings", "⚙"]];
 
 export default function AdminClient({ user }: { user: { name: string; email: string } }) {
   const [tab, setTab] = useState<Tab>("Dashboard");
@@ -30,11 +30,12 @@ export default function AdminClient({ user }: { user: { name: string; email: str
 
   const pageTitle = tab === "Calendar Setup" ? "Google Calendar & Calendly" : tab === "Meetings" ? "Live client meetings" : tab;
   return <div className="admin-shell">
-    <aside className="admin-sidebar"><Link className="admin-brand" href="/"><img className="mytm-registered-logo" src="/mytm-registered-logo.png" alt="MYTM" /><span>Experience Centre</span></Link><nav><small>WORKSPACE</small>{nav.slice(0, 6).map(([item, icon]) => <button key={item} className={tab === item ? "active" : ""} onClick={() => setTab(item)}><i>{icon}</i>{item}{item === "Leads" && <b>{data.leads.length}</b>}{item === "Meetings" && data.calendarConnected && <b className="calendar-nav-live">LIVE</b>}</button>)}<small>CONFIGURATION</small>{nav.slice(6).map(([item, icon]) => <button key={item} className={tab === item ? "active" : ""} onClick={() => setTab(item)}><i>{icon}</i>{item}</button>)}</nav><div className="admin-user"><div>{user.name.slice(0, 1).toUpperCase()}</div><span><strong>{user.name}</strong><small>{user.email}</small></span><a href="/signout-with-chatgpt?return_to=/">↗</a></div></aside>
+    <aside className="admin-sidebar"><Link className="admin-brand" href="/"><img className="mytm-registered-logo" src="/mytm-registered-logo.png" alt="MYTM" /><span>Experience Centre</span></Link><nav><small>WORKSPACE</small>{nav.slice(0, 7).map(([item, icon]) => <button key={item} className={tab === item ? "active" : ""} onClick={() => setTab(item)}><i>{icon}</i>{item}{item === "Product Decks" && <b>{data.products.filter((product) => product.pdfUrl).length}</b>}{item === "Leads" && <b>{data.leads.length}</b>}{item === "Meetings" && data.calendarConnected && <b className="calendar-nav-live">LIVE</b>}</button>)}<small>CONFIGURATION</small>{nav.slice(7).map(([item, icon]) => <button key={item} className={tab === item ? "active" : ""} onClick={() => setTab(item)}><i>{icon}</i>{item}</button>)}</nav><div className="admin-user"><div>{user.name.slice(0, 1).toUpperCase()}</div><span><strong>{user.name}</strong><small>{user.email}</small></span><a href="/signout-with-chatgpt?return_to=/">↗</a></div></aside>
     <main className="admin-main"><header className="admin-header"><div><small>MYTM DIGITAL EXPERIENCE CENTRE</small><h1>{pageTitle}</h1></div><div className="admin-header-actions"><span className="admin-system-live"><i /> SYSTEM ONLINE</span><a href="/" target="_blank">View live site ↗</a>{tab === "Products" && <button onClick={() => setEditingProduct({ active: true, requireLead: true, featured: false, displayOrder: data.products.length + 1 })}>+ Add product</button>}{tab === "Services" && <button onClick={() => setEditingService({ active: true, displayOrder: data.services.length + 1 })}>+ Add service</button>}</div></header>
       <div className="admin-content">
         {tab === "Dashboard" && <LeadAnalyticsDashboard data={data} onNavigate={setTab} />}
         {tab === "Products" && <ProductsTable products={data.products} onEdit={setEditingProduct} onDelete={async (id) => { if (confirm("Remove this product from the catalogue?")) { await action({ action: "deleteProduct", id }); flash("Product removed"); } }} />}
+        {tab === "Product Decks" && <ProductDecksManager products={data.products} media={data.media} onSave={async (product) => { await action({ action: "saveProductDeck", product: { id: product.id, pdfUrl: product.pdfUrl, requireLead: product.requireLead } }); flash(`${product.name} deck settings saved`); }} />}
         {tab === "Services" && <ServicesTable services={data.services} onEdit={setEditingService} onDelete={async (id) => { if (confirm("Remove this service?")) { await action({ action: "deleteService", id }); flash("Service removed"); } }} />}
         {tab === "Media Library" && <MediaLibrary media={data.media} onUploaded={() => { load(); flash("File uploaded"); }} />}
         {tab === "Leads" && <LeadManagement leads={data.leads} products={data.products} services={data.services} onSave={async (lead) => { await action({ action: "saveLead", lead }); flash(lead.id ? "Lead updated" : "Manual lead added"); }} onDelete={async (id) => { await action({ action: "deleteLead", id }); flash("Lead deleted"); }} />}
@@ -51,6 +52,32 @@ export default function AdminClient({ user }: { user: { name: string; email: str
 }
 
 function ProductsTable({ products, onEdit, onDelete }: { products: Product[]; onEdit: (p: Product) => void; onDelete: (id: number) => void }) { return <section className="admin-panel data-panel"><div className="table-tools"><label>⌕ <input placeholder="Search products…" /></label><span>{products.length} products · {products.filter((p) => p.active).length} active</span></div><div className="admin-table"><div className="table-row table-labels"><span>Product</span><span>Category</span><span>Content</span><span>Status</span><span>Order</span><span /></div>{products.map((p) => <div className="table-row" key={p.id}><span className="table-product"><i>{p.name.slice(0, 2).toUpperCase()}</i><b>{p.name}<small>{p.shortDescription}</small></b></span><span><em>{p.category}</em></span><span className="content-flags"><b className={p.pdfUrl ? "ready" : ""}>PDF</b><b className={p.videoUrl ? "ready" : ""}>VID</b></span><span><i className={p.active ? "status active" : "status"}>● {p.active ? "Active" : "Draft"}</i></span><span>#{p.displayOrder}</span><span className="row-actions"><button onClick={() => onEdit(p)}>Edit</button><button onClick={() => onDelete(p.id)}>×</button></span></div>)}</div></section>; }
+
+function ProductDecksManager({ products, media, onSave }: { products: Product[]; media: Media[]; onSave: (product: Product) => Promise<void> }) {
+  const [search, setSearch] = useState("");
+  const decks = media.filter((item) => /pdf|presentation|powerpoint/i.test(item.content_type) || /\.pptx?$/i.test(item.filename));
+  const shown = products.filter((product) => `${product.name} ${product.category}`.toLowerCase().includes(search.toLowerCase()));
+  const attached = products.filter((product) => product.pdfUrl).length;
+  return <>
+    <section className="product-decks-hero"><div><small>CLIENT PRESENTATION LIBRARY</small><h2>Manage every product deck from one place.</h2><p>Attach a PDF or PowerPoint presentation to each product, decide whether customer details are required, and make it available instantly in the live catalogue.</p></div><div className="product-deck-stats"><span><strong>{attached}</strong><small>DECKS ATTACHED</small></span><span><strong>{products.length - attached}</strong><small>NEED A DECK</small></span><span><strong>{products.filter((product) => product.pdfUrl && !product.requireLead).length}</strong><small>OPEN ACCESS</small></span></div></section>
+    <section className="product-decks-toolbar"><label>⌕ <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Find a product…" /></label><span>{shown.length} product{shown.length === 1 ? "" : "s"}</span></section>
+    <div className="product-decks-grid">{shown.map((product) => <ProductDeckCard key={`${product.id}-${product.pdfUrl}-${product.requireLead}`} product={product} decks={decks} onSave={onSave} />)}</div>
+  </>;
+}
+
+function ProductDeckCard({ product, decks, onSave }: { product: Product; decks: Media[]; onSave: (product: Product) => Promise<void> }) {
+  const [pdfUrl, setPdfUrl] = useState(product.pdfUrl || "");
+  const [requireLead, setRequireLead] = useState(product.requireLead);
+  const [saving, setSaving] = useState(false);
+  const changed = pdfUrl !== product.pdfUrl || requireLead !== product.requireLead;
+  const save = async () => { setSaving(true); try { await onSave({ ...product, pdfUrl, requireLead }); } finally { setSaving(false); } };
+  return <article className={`product-deck-card ${pdfUrl ? "attached" : "missing"}`}>
+    <header><img src={product.thumbnailUrl || "/card-enterprise.jpg"} alt="" /><div><small>{product.category}</small><h3>{product.name}</h3><span>{pdfUrl ? "● Deck ready for catalogue" : "○ No product deck attached"}</span></div></header>
+    <DeckUploadField label={`${product.name} deck`} value={pdfUrl} decks={decks} onChange={setPdfUrl} />
+    <Toggle label="Require customer form before viewing" note={requireLead ? "Lead details are saved before access" : "Deck opens immediately during client presentations"} checked={requireLead} onChange={setRequireLead} />
+    <footer><a href={`/?product=${product.slug}&request=pdf`} target="_blank" rel="noreferrer">Preview in catalogue ↗</a><button disabled={!changed || saving} onClick={save}>{saving ? "Saving…" : changed ? "Save deck settings" : "Settings saved"}</button></footer>
+  </article>;
+}
 
 function ServicesTable({ services, onEdit, onDelete }: { services: Service[]; onEdit: (s: Service) => void; onDelete: (id: number) => void }) { return <div className="admin-card-grid">{services.map((s, index) => <article className="admin-service-card" key={s.id}><div><span>0{index + 1}</span><i>{["◇", "⌁", "+", "✓"][index % 4]}</i></div><small>{s.active ? "● ACTIVE" : "○ DRAFT"}</small><h3>{s.name}</h3><p>{s.shortDescription}</p><div className="admin-tags">{s.features.slice(0, 3).map((f) => <span key={f}>{f}</span>)}</div><footer><button onClick={() => onEdit(s)}>Edit service</button><button onClick={() => onDelete(s.id)}>Remove</button></footer></article>)}</div>; }
 

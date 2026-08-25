@@ -112,17 +112,26 @@ test("provides full lead management and filtered analytics in the backoffice", a
 });
 
 test("lets admins upload and attach product decks from the editor", async () => {
-  const [admin, mediaRoute] = await Promise.all([
+  const [admin, mediaRoute, adminRoute] = await Promise.all([
     readFile(new URL("../app/admin/AdminClient.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/api/media/route.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/api/admin/route.ts", import.meta.url), "utf8"),
   ]);
 
   assert.match(admin, /function DeckUploadField/);
+  assert.match(admin, /Product Decks/);
+  assert.match(admin, /function ProductDecksManager/);
+  assert.match(admin, /function ProductDeckCard/);
+  assert.match(admin, /Manage every product deck from one place/);
+  assert.match(admin, /Require customer form before viewing/);
+  assert.match(admin, /Preview in catalogue/);
   assert.match(admin, /Choose deck from computer/);
   assert.match(admin, /accept="application\/pdf,.pdf,.ppt,.pptx/);
   assert.match(admin, /Replace with another file/);
   assert.match(mediaRoute, /allowedExtensions/);
   assert.match(mediaRoute, /Files must be smaller than 95 MB/);
+  assert.match(adminRoute, /action === "saveProductDeck"/);
+  assert.match(adminRoute, /UPDATE products SET pdf_url=\?, require_lead=\?/);
 });
 
 test("showcases attached product decks inside the customer catalogue", async () => {

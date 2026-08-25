@@ -110,6 +110,14 @@ export async function POST(request: Request) {
     }
     return Response.json({ success: true });
   }
+  if (action === "saveProductDeck") {
+    const p = body.product as Record<string, unknown>;
+    const id = Number(p.id);
+    if (!id) return Response.json({ error: "Choose a product before saving its deck." }, { status: 400 });
+    await db.prepare("UPDATE products SET pdf_url=?, require_lead=? WHERE id=?")
+      .bind(p.pdfUrl || "", Number(Boolean(p.requireLead)), id).run();
+    return Response.json({ success: true });
+  }
   if (action === "saveService") {
     const s = body.service as Record<string, unknown>;
     const features = String(s.features || "").split("\n").map((x) => x.trim()).filter(Boolean);
