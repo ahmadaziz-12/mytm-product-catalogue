@@ -118,7 +118,6 @@ export default function Showcase() {
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState<SelectedItem>(null);
   const [meetingOpen, setMeetingOpen] = useState(false);
-  const [welcomeOpen, setWelcomeOpen] = useState(true);
   const [assistantOpen, setAssistantOpen] = useState(false);
   const [requestKind, setRequestKind] = useState<RequestKind>("demo");
   const [heroSlide, setHeroSlide] = useState(0);
@@ -146,22 +145,6 @@ export default function Showcase() {
       document.body.style.overflow = "";
     };
   }, [meetingOpen, selected]);
-
-  useEffect(() => {
-    let timer: ReturnType<typeof setTimeout>;
-    const activity = () => {
-      clearTimeout(timer);
-      if (!meetingOpen && !assistantOpen) timer = setTimeout(() => setWelcomeOpen(true), 60_000);
-    };
-    if (!welcomeOpen && !meetingOpen && !assistantOpen) timer = setTimeout(() => setWelcomeOpen(true), 60_000);
-    window.addEventListener("pointerdown", activity, true);
-    window.addEventListener("keydown", activity, true);
-    return () => {
-      clearTimeout(timer);
-      window.removeEventListener("pointerdown", activity, true);
-      window.removeEventListener("keydown", activity, true);
-    };
-  }, [welcomeOpen, meetingOpen, assistantOpen]);
 
   useEffect(() => {
     const elements = document.querySelectorAll<HTMLElement>("[data-reveal]");
@@ -242,6 +225,7 @@ export default function Showcase() {
         {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
         <a className="os-brand" href="/" aria-label="MYTM catalogue home">
           <img src="/mytm-registered-logo.png" alt="MYTM" />
+          <span><strong>Product Catalogue</strong><small>Digital Experience Centre</small></span>
         </a>
         <nav className="os-nav" aria-label="Catalogue navigation">
           <button className={mode === "products" ? "active" : ""} onClick={() => { setMode("products"); clearProductSelection(); document.getElementById("catalogue")?.scrollIntoView({ behavior: "smooth" }); }}>Products</button>
@@ -256,6 +240,7 @@ export default function Showcase() {
           </label>
           <button className="os-sales" onClick={openMeeting}>Talk to Sales</button>
         </div>
+        <div className="os-header-accent" aria-hidden="true" />
       </header>
 
       <section className="os-hero os-hero-carousel" aria-labelledby="product-os-title">
@@ -322,6 +307,20 @@ export default function Showcase() {
         <img src="/mytm-partners-clients.png" alt="MYTM partners and clients" />
       </section>
 
+      <footer className="os-footer">
+        <section className="os-footer-cta">
+          <div><span>BUILD WHAT FINANCE NEEDS NEXT</span><h2>Turn your next fintech idea into a working product.</h2><p>Explore the catalogue, find the right capability and start a focused conversation with MYTM.</p></div>
+          <button onClick={openMeeting}>Talk to Sales <ArrowRight size={18} /></button>
+        </section>
+        <div className="os-footer-main">
+          <div className="os-footer-brand"><img src="/mytm-registered-logo.png" alt="MYTM" /><p>Technology, products and delivery expertise for modern financial institutions.</p><span><i /> PRODUCT CATALOGUE · ONLINE</span></div>
+          <nav aria-label="Footer catalogue navigation"><strong>Explore</strong><button onClick={() => { setMode("products"); clearProductSelection(); document.getElementById("catalogue")?.scrollIntoView({ behavior: "smooth" }); }}>Products</button><button onClick={() => { setMode("services"); clearProductSelection(); document.getElementById("catalogue")?.scrollIntoView({ behavior: "smooth" }); }}>Services</button><button onClick={() => document.getElementById("partners")?.scrollIntoView({ behavior: "smooth" })}>Partners &amp; clients</button></nav>
+          <div><strong>Connect</strong><a href={`mailto:${catalogue.settings.contactEmail}`}>{catalogue.settings.contactEmail}</a>{catalogue.settings.contactNumber && <a href={`tel:${catalogue.settings.contactNumber.replace(/\s/g, "")}`}>{catalogue.settings.contactNumber}</a>}<button onClick={openMeeting}>Schedule a conversation</button></div>
+          <div><strong>Workspace</strong><a href="/admin">Backoffice admin</a><button onClick={() => setAssistantOpen(true)}>Ask MYTM AI</button><small>Secure access for MYTM teams</small></div>
+        </div>
+        <div className="os-footer-bottom"><span>© {new Date().getFullYear()} MYTM. All rights reserved.</span><span>Payments · Banking · Lending · AI · Compliance</span></div>
+      </footer>
+
       <button className={`os-ai-trigger ${activeProduct ? "form-open" : ""}`} onClick={() => setAssistantOpen(true)}><Robot size={24} weight="duotone" /> Ask MYTM AI</button>
 
       <CatalogueAssistant open={assistantOpen} onOpenChange={setAssistantOpen} onRecommendation={openAssistantRecommendation} onMeeting={openMeeting} />
@@ -335,19 +334,6 @@ export default function Showcase() {
         <button onClick={openMeeting}>Sales</button>
       </nav>
 
-      {welcomeOpen && (
-        <section className="idle-experience" aria-label="Welcome to the MYTM catalogue">
-          <video autoPlay muted loop playsInline poster="/finova-cover.png" src="/api/media?key=finova-product-video.mp4"><track kind="captions" src="/empty.vtt" srcLang="en" label="English" /></video>
-          <div className="idle-shade" />
-          <div className="idle-content">
-            <img className="mytm-registered-logo" src="/mytm-registered-logo.png" alt="MYTM" />
-            <span>MYTM DIGITAL EXPERIENCE CENTRE</span>
-            <h1>Touch to see MYTM’s products &amp; services</h1>
-            <p>Step into the future of finance. Explore solutions, watch product stories and connect with our team.</p>
-            <button onClick={(event) => { event.stopPropagation(); setWelcomeOpen(false); }}>Touch anywhere to explore</button>
-          </div>
-        </section>
-      )}
     </main>
   );
 }

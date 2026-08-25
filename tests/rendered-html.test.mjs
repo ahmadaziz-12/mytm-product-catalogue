@@ -27,6 +27,9 @@ test("server-renders the MYTM Product OS catalogue in browsing mode", async () =
   assert.match(html, /Finova AI Financial Analyst/);
   assert.match(html, /AI Collection Management/);
   assert.match(html, /CompliClear AML\/KYC/);
+  assert.match(html, /BUILD WHAT FINANCE NEEDS NEXT/);
+  assert.match(html, /Backoffice admin/);
+  assert.doesNotMatch(html, /Touch anywhere to explore/);
   assert.doesNotMatch(html, /class="os-product-rail"/);
 });
 
@@ -57,10 +60,15 @@ test("opens product-specific forms and persists their details to the backoffice"
   assert.doesNotMatch(showcase, /Choose a time now/);
   assert.match(showcase, /const heroSlides = \[/);
   assert.match(showcase, /CompliClear AML\/KYC/);
+  assert.match(showcase, /className="os-footer"/);
+  assert.doesNotMatch(showcase, /setWelcomeOpen/);
+  assert.doesNotMatch(showcase, /idle-experience/);
   assert.match(admin, /LeadDetailsModal/);
   assert.match(admin, /Copy all details/);
   assert.match(admin, /DEMO REQUEST PIPELINE/);
   assert.match(admin, /Connect your Calendly event type to the Google Calendar/);
+  assert.match(admin, /SYSTEM ONLINE/);
+  assert.doesNotMatch(admin, /label="Welcome screen"/);
   assert.match(assistant, /relevanceFloor/);
   assert.match(assistant, /key: "collections"/);
   assert.match(assistant, /stopWords/);
