@@ -18,7 +18,7 @@ export async function GET() {
   const [products, services, leads, media, settings, calendarFeed] = await Promise.all([
     db.prepare("SELECT * FROM products ORDER BY display_order, id").all(),
     db.prepare("SELECT * FROM services ORDER BY display_order, id").all(),
-    db.prepare("SELECT * FROM leads ORDER BY created_at DESC LIMIT 100").all(),
+    db.prepare("SELECT * FROM leads ORDER BY created_at DESC LIMIT 1000").all(),
     db.prepare("SELECT * FROM media ORDER BY created_at DESC").all(),
     getSettings(),
     db.prepare("SELECT value FROM settings WHERE key = 'google_calendar_ical_url'").first() as Promise<{ value: string } | null>,
@@ -33,6 +33,41 @@ export async function POST(request: Request) {
   const body = await request.json() as Record<string, unknown>;
   const action = String(body.action || "");
   const db = database();
+
+  if (action === "saveLead") {
+    const lead = (body.lead || {}) as Record<string, unknown>;
+    const name = String(lead.name || "").trim();
+    const email = String(lead.email || "").trim().toLowerCase();
+    if (!name) return Response.json({ error: "Lead name is required" }, { status: 400 });
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return Response.json({ error: "Enter a valid email address" }, { status: 400 });
+    const values = {
+      phone: String(lead.phone || "").trim(),
+      company: String(lead.company || "").trim(),
+      designation: String(lead.designation || "").trim(),
+      preferredDate: String(lead.preferred_date || "").trim(),
+      requestType: String(lead.request_type || "General").trim() || "General",
+      notes: String(lead.notes || "").trim(),
+      productInterest: String(lead.product_interest || "None").trim() || "None",
+      serviceInterest: String(lead.service_interest || "None").trim() || "None",
+      source: String(lead.source || "Manual").trim() || "Manual",
+      contentAccessed: String(lead.content_accessed || "").trim(),
+      status: String(lead.status || "New").trim() || "New",
+    };
+    if (lead.id) {
+      await db.prepare(`UPDATE leads SET name=?, phone=?, email=?, company=?, designation=?, preferred_date=?, request_type=?, notes=?, product_interest=?, service_interest=?, source=?, content_accessed=?, status=? WHERE id=?`)
+        .bind(name, values.phone, email, values.company, values.designation, values.preferredDate, values.requestType, values.notes, values.productInterest, values.serviceInterest, values.source, values.contentAccessed, values.status, Number(lead.id)).run();
+    } else {
+      await db.prepare(`INSERT INTO leads (name, phone, email, company, designation, preferred_date, request_type, notes, product_interest, service_interest, source, content_accessed, status, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
+        .bind(name, values.phone, email, values.company, values.designation, values.preferredDate, values.requestType, values.notes, values.productInterest, values.serviceInterest, values.source, values.contentAccessed, values.status, new Date().toISOString()).run();
+    }
+    return Response.json({ success: true });
+  }
+  if (action === "deleteLead") {
+    const id = Number(body.id);
+    if (!Number.isInteger(id) || id < 1) return Response.json({ error: "A valid lead is required" }, { status: 400 });
+    await db.prepare("DELETE FROM leads WHERE id = ?").bind(id).run();
+    return Response.json({ success: true });
+  }
 
   if (action === "deleteProduct") {
     await db.prepare("DELETE FROM products WHERE id = ?").bind(Number(body.id)).run();

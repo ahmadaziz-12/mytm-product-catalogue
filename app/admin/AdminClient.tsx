@@ -1,8 +1,10 @@
 "use client";
 
-import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
+import { FormEvent, useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import type { Product, Service, SiteSettings } from "../catalog-data";
+import LeadAnalyticsDashboard from "./LeadAnalyticsDashboard";
+import LeadManagement from "./LeadManagement";
 
 type Lead = { id: number; name: string; phone: string; email: string; company: string; designation: string; preferred_date: string; request_type: string; notes: string; product_interest: string; service_interest: string; source: string; content_accessed: string; status: string; created_at: string };
 type Media = { id: number; filename: string; content_type: string; url: string; created_at: string };
@@ -31,11 +33,11 @@ export default function AdminClient({ user }: { user: { name: string; email: str
     <aside className="admin-sidebar"><Link className="admin-brand" href="/"><img className="mytm-registered-logo" src="/mytm-registered-logo.png" alt="MYTM" /><span>Experience Centre</span></Link><nav><small>WORKSPACE</small>{nav.slice(0, 6).map(([item, icon]) => <button key={item} className={tab === item ? "active" : ""} onClick={() => setTab(item)}><i>{icon}</i>{item}{item === "Leads" && <b>{data.leads.length}</b>}{item === "Meetings" && data.calendarConnected && <b className="calendar-nav-live">LIVE</b>}</button>)}<small>CONFIGURATION</small>{nav.slice(6).map(([item, icon]) => <button key={item} className={tab === item ? "active" : ""} onClick={() => setTab(item)}><i>{icon}</i>{item}</button>)}</nav><div className="admin-user"><div>{user.name.slice(0, 1).toUpperCase()}</div><span><strong>{user.name}</strong><small>{user.email}</small></span><a href="/signout-with-chatgpt?return_to=/">↗</a></div></aside>
     <main className="admin-main"><header className="admin-header"><div><small>MYTM DIGITAL EXPERIENCE CENTRE</small><h1>{pageTitle}</h1></div><div className="admin-header-actions"><span className="admin-system-live"><i /> SYSTEM ONLINE</span><a href="/" target="_blank">View live site ↗</a>{tab === "Products" && <button onClick={() => setEditingProduct({ active: true, requireLead: true, featured: false, displayOrder: data.products.length + 1 })}>+ Add product</button>}{tab === "Services" && <button onClick={() => setEditingService({ active: true, displayOrder: data.services.length + 1 })}>+ Add service</button>}</div></header>
       <div className="admin-content">
-        {tab === "Dashboard" && <Dashboard data={data} onNavigate={setTab} />}
+        {tab === "Dashboard" && <LeadAnalyticsDashboard data={data} onNavigate={setTab} />}
         {tab === "Products" && <ProductsTable products={data.products} onEdit={setEditingProduct} onDelete={async (id) => { if (confirm("Remove this product from the catalogue?")) { await action({ action: "deleteProduct", id }); flash("Product removed"); } }} />}
         {tab === "Services" && <ServicesTable services={data.services} onEdit={setEditingService} onDelete={async (id) => { if (confirm("Remove this service?")) { await action({ action: "deleteService", id }); flash("Service removed"); } }} />}
         {tab === "Media Library" && <MediaLibrary media={data.media} onUploaded={() => { load(); flash("File uploaded"); }} />}
-        {tab === "Leads" && <LeadsTable leads={data.leads} />}
+        {tab === "Leads" && <LeadManagement leads={data.leads} products={data.products} services={data.services} onSave={async (lead) => { await action({ action: "saveLead", lead }); flash(lead.id ? "Lead updated" : "Manual lead added"); }} onDelete={async (id) => { await action({ action: "deleteLead", id }); flash("Lead deleted"); }} />}
         {tab === "Meetings" && <MeetingsView connected={data.calendarConnected} leads={data.leads} onSetup={() => setTab("Calendar Setup")} />}
         {tab === "Calendar Setup" && <CalendarSettings settings={data.settings} connected={data.calendarConnected} onSave={async (settings) => { await action({ action: "saveSettings", settings }); flash("Calendly settings saved"); }} onSaveFeed={async (feedUrl) => { await action({ action: "saveCalendarFeed", feedUrl }); flash(feedUrl ? "Google Calendar connected" : "Google Calendar disconnected"); }} />}
         {tab === "Lead Form" && <LeadFormSettings settings={data.settings} onSave={async (settings) => { await action({ action: "saveSettings", settings }); flash("Lead form updated"); }} />}
@@ -46,14 +48,6 @@ export default function AdminClient({ user }: { user: { name: string; email: str
     {editingService && <ServiceEditor service={editingService} media={data.media} onClose={() => setEditingService(null)} onSave={async (service) => { await action({ action: "saveService", service }); setEditingService(null); flash(service.id ? "Service updated" : "Service published"); }} />}
     {notice && <div className="admin-toast">✓ {notice}</div>}
   </div>;
-}
-
-function Dashboard({ data, onNavigate }: { data: AdminData; onNavigate: (tab: Tab) => void }) {
-  const { feed, loading, refresh } = useLiveMeetings(data.calendarConnected);
-  const upcoming = feed.meetings.filter((meeting) => meeting.status === "upcoming" || meeting.status === "live");
-  const stats = [["Total products", data.products.length, "+ catalogue"], ["Active services", data.services.filter((s) => s.active).length, "live now"], ["Leads captured", data.leads.length, "all sources"], ["Upcoming meetings", upcoming.length, data.calendarConnected ? "Google Calendar live" : "connect calendar"]];
-  const sources = useMemo(() => data.leads.reduce<Record<string, number>>((map, lead) => ({ ...map, [lead.source]: (map[lead.source] || 0) + 1 }), {}), [data.leads]);
-  return <><section className="admin-welcome"><div><small>GOOD TO SEE YOU</small><h2>Your digital showroom at a glance.</h2><p>Manage catalogue content, understand prospect intent and keep every meeting path current.</p><div className="admin-quick-actions"><button onClick={() => onNavigate("Products")}>Manage products</button><button onClick={() => onNavigate("Leads")}>Review leads</button><button onClick={() => onNavigate(data.calendarConnected ? "Meetings" : "Calendar Setup")}>Client meetings</button></div></div><div className="live-status"><span>● LIVE</span><strong>Customer experience</strong><small>Catalogue and lead capture are operational</small><a href="/" target="_blank">Open showroom ↗</a></div></section><div className="stat-grid">{stats.map(([label, value, note], i) => <article key={String(label)}><div className={`stat-icon si-${i}`}>{["◇", "◫", "◎", "◷"][i]}</div><span>{label}</span><strong>{value}</strong><small>{note}</small></article>)}</div><div className="admin-grid"><section className="admin-panel"><div className="panel-head"><div><small>LEAD ACTIVITY</small><h3>Recent prospects</h3></div><button onClick={() => onNavigate("Leads")}>View all ↗</button></div><div className="recent-list">{data.leads.slice(0, 5).map((lead) => <div key={lead.id}><div className="lead-avatar">{lead.name.slice(0, 1)}</div><span><strong>{lead.name}</strong><small>{lead.company} · {lead.source}</small></span><time>{new Date(lead.created_at).toLocaleDateString()}</time></div>)}{!data.leads.length && <div className="admin-empty">New leads will appear here as prospects engage.</div>}</div></section><section className="admin-panel"><div className="panel-head"><div><small>LEAD SOURCES</small><h3>Conversion signals</h3></div></div><div className="source-list">{Object.entries(sources).map(([source, count]) => <div key={source}><span>{source}</span><div><i style={{ width: `${Math.min(100, count * 20)}%` }} /></div><b>{count}</b></div>)}{!Object.keys(sources).length && <div className="admin-empty">Source analytics begin with the first inquiry.</div>}</div></section><section className="admin-panel meeting-overview"><div className="panel-head"><div><small>GOOGLE CALENDAR · LIVE</small><h3>Upcoming client meetings</h3></div><div className="meeting-panel-actions"><button onClick={refresh}>{loading ? "Syncing…" : "Refresh"}</button><button onClick={() => onNavigate(data.calendarConnected ? "Meetings" : "Calendar Setup")}>{data.calendarConnected ? "View calendar ↗" : "Connect calendar ↗"}</button></div></div><MeetingStrip feed={feed} connected={data.calendarConnected} /></section></div></>;
 }
 
 function ProductsTable({ products, onEdit, onDelete }: { products: Product[]; onEdit: (p: Product) => void; onDelete: (id: number) => void }) { return <section className="admin-panel data-panel"><div className="table-tools"><label>⌕ <input placeholder="Search products…" /></label><span>{products.length} products · {products.filter((p) => p.active).length} active</span></div><div className="admin-table"><div className="table-row table-labels"><span>Product</span><span>Category</span><span>Content</span><span>Status</span><span>Order</span><span /></div>{products.map((p) => <div className="table-row" key={p.id}><span className="table-product"><i>{p.name.slice(0, 2).toUpperCase()}</i><b>{p.name}<small>{p.shortDescription}</small></b></span><span><em>{p.category}</em></span><span className="content-flags"><b className={p.pdfUrl ? "ready" : ""}>PDF</b><b className={p.videoUrl ? "ready" : ""}>VID</b></span><span><i className={p.active ? "status active" : "status"}>● {p.active ? "Active" : "Draft"}</i></span><span>#{p.displayOrder}</span><span className="row-actions"><button onClick={() => onEdit(p)}>Edit</button><button onClick={() => onDelete(p.id)}>×</button></span></div>)}</div></section>; }
@@ -81,52 +75,6 @@ function MediaLibrary({ media, onUploaded }: { media: Media[]; onUploaded: () =>
   }
   const fileKind = (file: Media) => /presentation|powerpoint/i.test(file.content_type) || /\.pptx?$/i.test(file.filename) ? "PPT" : file.content_type.includes("pdf") ? "PDF" : file.content_type.includes("video") ? "VID" : "IMG";
   return <><section className="upload-zone"><form onSubmit={upload}><div className="upload-icon">↑</div><h3>Upload to the MYTM media library</h3><p>Product decks (PDF, PPT or PPTX), card images and videos up to 200 MB.</p><label><input type="file" name="file" accept="application/pdf,.ppt,.pptx,application/vnd.ms-powerpoint,application/vnd.openxmlformats-officedocument.presentationml.presentation,image/*,video/*" required /><span>{uploading ? "Uploading — please keep this page open…" : "Choose file"}</span></label><button disabled={uploading}>{uploading ? "Uploading…" : "Upload media"}</button>{error && <p className="upload-error">{error}</p>}</form></section><div className="media-grid">{media.map((file) => <article key={file.id}><div className="file-preview">{fileKind(file)}</div><strong>{file.filename}</strong><small>{file.content_type}</small><div><a href={file.url} target="_blank" rel="noreferrer">View ↗</a><button onClick={() => navigator.clipboard.writeText(file.url)}>Copy URL</button></div></article>)}</div></>;
-}
-
-function LeadsTable({ leads }: { leads: Lead[] }) {
-  const [query, setQuery] = useState("");
-  const [selected, setSelected] = useState<Lead | null>(null);
-  const shown = leads.filter((lead) => `${lead.name} ${lead.company} ${lead.email} ${lead.designation || ""} ${lead.product_interest} ${lead.request_type || ""} ${lead.notes || ""}`.toLowerCase().includes(query.toLowerCase()));
-  return <>
-    <section className="admin-panel data-panel"><div className="table-tools"><label>⌕ <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search leads…" /></label><span>Click a lead to view every detail</span><button onClick={() => downloadLeads(leads)}>Export CSV ↓</button></div><div className="admin-table leads-table"><div className="table-row table-labels"><span>Prospect</span><span>Interest</span><span>Request</span><span>Status</span><span>Received</span></div>{shown.map((lead) => <button className="table-row lead-click-row" key={lead.id} onClick={() => setSelected(lead)}><span className="table-product"><i>{lead.name.slice(0, 1)}</i><b>{lead.name}<small>{lead.designation || "Designation not supplied"}<br />{lead.email}{lead.phone ? ` · ${lead.phone}` : ""}</small></b></span><span><strong>{lead.product_interest !== "None" ? lead.product_interest : lead.service_interest}</strong><small>{lead.company || lead.content_accessed}</small></span><span><strong>{lead.request_type || lead.source}</strong><small>{lead.preferred_date ? `Preferred: ${new Date(`${lead.preferred_date}T00:00:00`).toLocaleDateString()}` : lead.source}</small></span><span><i className="status active">● {lead.status}</i></span><span>{new Date(lead.created_at).toLocaleDateString()}</span></button>)}</div>
-      {!shown.length && <div className="admin-empty">No leads match this search.</div>}
-    </section>
-    {selected && <LeadDetailsModal lead={selected} onClose={() => setSelected(null)} />}
-  </>;
-}
-
-function LeadDetailsModal({ lead, onClose }: { lead: Lead; onClose: () => void }) {
-  const [copied, setCopied] = useState("");
-  useEffect(() => {
-    const closeOnEscape = (event: KeyboardEvent) => event.key === "Escape" && onClose();
-    window.addEventListener("keydown", closeOnEscape);
-    return () => window.removeEventListener("keydown", closeOnEscape);
-  }, [onClose]);
-  const copy = async (value: string, label: string) => {
-    if (!value) return;
-    await navigator.clipboard.writeText(value);
-    setCopied(label);
-    window.setTimeout(() => setCopied(""), 1600);
-  };
-  const interest = lead.product_interest !== "None" ? lead.product_interest : lead.service_interest !== "None" ? lead.service_interest : lead.content_accessed || "Not specified";
-  const preferredDate = lead.preferred_date ? new Date(`${lead.preferred_date}T00:00:00`).toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "long", year: "numeric" }) : "Not requested";
-  const copySummary = [
-    `Name: ${lead.name}`, `Email: ${lead.email}`, `Phone: ${lead.phone || "Not supplied"}`, `Company: ${lead.company || "Not supplied"}`,
-    `Designation: ${lead.designation || "Not supplied"}`, `Request: ${lead.request_type || lead.source}`, `Preferred date: ${preferredDate}`,
-    `Interest: ${interest}`, `Notes: ${lead.notes || "No notes supplied"}`, `Received: ${new Date(lead.created_at).toLocaleString()}`,
-  ].join("\n");
-  return <div className="lead-detail-backdrop">
-    <section className="lead-detail-modal" role="dialog" aria-modal="true" aria-label={`Lead details for ${lead.name}`}>
-      <header><div className="lead-detail-avatar">{lead.name.slice(0, 1).toUpperCase()}</div><div><small>LEAD #{lead.id}</small><h2>{lead.name}</h2><p>{lead.designation || "Designation not supplied"}{lead.company ? ` · ${lead.company}` : ""}</p></div><button onClick={onClose} aria-label="Close lead details">×</button></header>
-      <div className="lead-detail-summary"><div><small>REQUEST</small><strong>{lead.request_type || lead.source}</strong></div><div><small>STATUS</small><strong className="lead-status-live">● {lead.status}</strong></div><div><small>RECEIVED</small><strong>{new Date(lead.created_at).toLocaleString()}</strong></div></div>
-      <div className="lead-detail-body">
-        <section><div className="lead-section-title"><small>CONTACT</small><h3>Prospect information</h3></div><div className="lead-info-grid"><div><small>EMAIL</small><strong>{lead.email}</strong><button onClick={() => copy(lead.email, "Email")}>{copied === "Email" ? "Copied ✓" : "Copy"}</button></div><div><small>PHONE</small><strong>{lead.phone || "Not supplied"}</strong>{lead.phone && <button onClick={() => copy(lead.phone, "Phone")}>{copied === "Phone" ? "Copied ✓" : "Copy"}</button>}</div><div><small>COMPANY</small><strong>{lead.company || "Not supplied"}</strong></div><div><small>DESIGNATION</small><strong>{lead.designation || "Not supplied"}</strong></div></div></section>
-        <section className="lead-intent-card"><div><small>PRIMARY INTEREST</small><h3>{interest}</h3><p>{lead.content_accessed ? `Content requested: ${lead.content_accessed}` : lead.source}</p></div>{lead.preferred_date && <div className="lead-date-card"><span>{new Date(`${lead.preferred_date}T00:00:00`).getDate()}</span><div><small>PREFERRED DEMO DATE</small><strong>{preferredDate}</strong></div></div>}</section>
-        <section><div className="lead-section-title"><small>CUSTOMER CONTEXT</small><h3>Notes</h3></div><div className={`lead-notes ${lead.notes ? "" : "empty"}`}>{lead.notes || "No optional notes were supplied with this request."}</div></section>
-      </div>
-      <footer><span>{copied ? `${copied} copied to clipboard` : "All lead details are ready to copy"}</span><a href={`mailto:${lead.email}?subject=${encodeURIComponent(`MYTM ${lead.request_type || "catalogue"} request`)}`}>Email prospect ↗</a><button onClick={() => copy(copySummary, "All details")}>{copied === "All details" ? "Copied all details ✓" : "Copy all details"}</button></footer>
-    </section>
-  </div>;
 }
 
 function useLiveMeetings(enabled: boolean) {
@@ -162,14 +110,6 @@ function meetingDate(meeting: Meeting) {
     date: start.toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short" }),
     time: meeting.allDay ? "All day" : `${start.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })} – ${new Date(meeting.end).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}`,
   };
-}
-
-function MeetingStrip({ feed, connected }: { feed: MeetingFeed; connected: boolean }) {
-  const meetings = feed.meetings.filter((meeting) => meeting.status === "upcoming" || meeting.status === "live").slice(0, 4);
-  if (!connected) return <div className="calendar-empty"><span>□</span><div><strong>Connect Google Calendar</strong><p>Add the private iCal address once and upcoming client meetings will sync here automatically.</p></div></div>;
-  if (feed.error) return <div className="calendar-empty calendar-error"><span>!</span><div><strong>Calendar needs attention</strong><p>{feed.error}</p></div></div>;
-  if (!meetings.length) return <div className="calendar-empty"><span>✓</span><div><strong>No upcoming meetings</strong><p>The calendar is connected and will refresh automatically every minute.</p></div></div>;
-  return <div className="dashboard-meeting-strip">{meetings.map((meeting) => { const date = meetingDate(meeting); return <article key={`${meeting.id}-${meeting.start}`}><div className="meeting-date"><b>{date.day}</b><span>{date.month}</span></div><div><span className={`meeting-state ${meeting.status}`}>● {meeting.status}</span><strong>{meeting.title}</strong><small>{date.time} · {meeting.attendeeName}</small></div>{meeting.meetLink && <a href={meeting.meetLink} target="_blank" rel="noreferrer">Join ↗</a>}</article>; })}</div>;
 }
 
 function MeetingsView({ connected, leads, onSetup }: { connected: boolean; leads: Lead[]; onSetup: () => void }) {
@@ -217,4 +157,3 @@ function ServiceEditor({ service, media, onClose, onSave }: { service: Partial<S
 
 function Editor({ title, eyebrow, onClose, children }: { title: string; eyebrow: string; onClose: () => void; children: React.ReactNode }) { return <div className="editor-backdrop"><aside className="editor-panel"><header><div><small>{eyebrow}</small><h2>{title}</h2></div><button onClick={onClose}>×</button></header>{children}</aside></div>; }
 function Toggle({ label, note, checked, onChange }: { label: string; note?: string; checked: boolean; onChange: (value: boolean) => void }) { return <label className="toggle-row"><span><strong>{label}</strong>{note && <small>{note}</small>}</span><input type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)} /><i /></label>; }
-function downloadLeads(leads: Lead[]) { const headers = ["Name", "Phone", "Email", "Company", "Designation", "Request Type", "Preferred Date", "Product", "Service", "Notes", "Source", "Status", "Date"]; const rows = leads.map((l) => [l.name, l.phone, l.email, l.company, l.designation, l.request_type, l.preferred_date, l.product_interest, l.service_interest, l.notes, l.source, l.status, l.created_at]); const csv = [headers, ...rows].map((row) => row.map((v) => `"${String(v || "").replace(/"/g, '""')}"`).join(",")).join("\n"); const url = URL.createObjectURL(new Blob([csv], { type: "text/csv" })); const a = document.createElement("a"); a.href = url; a.download = "mytm-leads.csv"; a.click(); URL.revokeObjectURL(url); }

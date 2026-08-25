@@ -37,12 +37,13 @@ test("server-renders the MYTM Product OS catalogue in browsing mode", async () =
 });
 
 test("opens product-specific forms and persists their details to the backoffice", async () => {
-  const [leadRoute, store, admin, showcase, assistant] = await Promise.all([
+  const [leadRoute, store, admin, showcase, assistant, leadManagement] = await Promise.all([
     readFile(new URL("../app/api/leads/route.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/api/_store.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/admin/AdminClient.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/Showcase.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/api/assistant/route.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/admin/LeadManagement.tsx", import.meta.url), "utf8"),
   ]);
 
   assert.match(leadRoute, /requestType === "Demo"/);
@@ -50,9 +51,9 @@ test("opens product-specific forms and persists their details to the backoffice"
   assert.match(leadRoute, /designation/);
   assert.match(store, /preferred_date TEXT NOT NULL DEFAULT ''/);
   assert.match(store, /request_type TEXT NOT NULL DEFAULT 'General'/);
-  assert.match(admin, /Preferred:/);
-  assert.match(admin, /request_type/);
-  assert.match(admin, /designation/);
+  assert.match(leadManagement, /PREFERRED DEMO DATE/);
+  assert.match(leadManagement, /request_type/);
+  assert.match(leadManagement, /designation/);
   assert.match(showcase, /Request Demo/);
   assert.match(showcase, /Request PDF/);
   assert.match(showcase, /Preferred date/);
@@ -68,8 +69,8 @@ test("opens product-specific forms and persists their details to the backoffice"
   assert.match(showcase, /How MYTM delivers/);
   assert.doesNotMatch(showcase, /setWelcomeOpen/);
   assert.doesNotMatch(showcase, /idle-experience/);
-  assert.match(admin, /LeadDetailsModal/);
-  assert.match(admin, /Copy all details/);
+  assert.match(leadManagement, /LeadDetails/);
+  assert.match(leadManagement, /Copy all details/);
   assert.match(admin, /DEMO REQUEST PIPELINE/);
   assert.match(admin, /Connect your Calendly event type to the Google Calendar/);
   assert.match(admin, /SYSTEM ONLINE/);
@@ -89,4 +90,23 @@ test("keeps production admin access restricted to MYTM accounts", async () => {
   assert.match(auth, /endsWith\("@mytm\.com"\)/);
   assert.match(adminPage, /process\.env\.NODE_ENV === "development"/);
   assert.match(adminRoute, /process\.env\.NODE_ENV === "development"/);
+});
+
+test("provides full lead management and filtered analytics in the backoffice", async () => {
+  const [adminRoute, management, dashboard] = await Promise.all([
+    readFile(new URL("../app/api/admin/route.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/admin/LeadManagement.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/admin/LeadAnalyticsDashboard.tsx", import.meta.url), "utf8"),
+  ]);
+
+  assert.match(adminRoute, /action === "saveLead"/);
+  assert.match(adminRoute, /action === "deleteLead"/);
+  assert.match(adminRoute, /UPDATE leads SET name=/);
+  assert.match(management, /Add manual lead/);
+  assert.match(management, /Save changes/);
+  assert.match(management, /Delete/);
+  assert.match(dashboard, /Custom range/);
+  assert.match(dashboard, /Lead activity over time/);
+  assert.match(dashboard, /Top product and service interests/);
+  assert.match(dashboard, /What prospects request/);
 });
