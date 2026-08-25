@@ -150,7 +150,7 @@ export const seedCases: CaseStudy[] = caseRows.map(([challenge, solution, impact
 
 export const defaultSettings: SiteSettings = {
   calendlyUrl: "https://calendly.com/",
-  meetingLabel: "Book a Meeting",
+  meetingLabel: "Talk to Sales",
   meetingEnabled: true,
   heroHeading: "Technology built for the future of finance & enterprise.",
   heroSubheading: "Explore MYTM's ecosystem of fintech, banking, lending, payments, AI and enterprise technology solutions.",

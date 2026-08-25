@@ -1,7 +1,22 @@
 "use client";
 
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import Link from "next/link";
+import {
+  ArrowRight,
+  Bank,
+  CardsThree,
+  CheckCircle,
+  Cube,
+  FilePdf,
+  MagnifyingGlass,
+  Robot,
+  ShieldCheck,
+  Sparkle,
+  Stack,
+  Wallet,
+  X,
+} from "@phosphor-icons/react";
 import {
   defaultSettings,
   seedCases,
@@ -27,6 +42,7 @@ type SelectedItem =
 
 type AssistantRecommendation = { type: "product" | "service"; id: number; name: string; category: string };
 type AssistantMessage = { role: "user" | "assistant"; content: string; recommendations?: AssistantRecommendation[]; poweredBy?: "openai" | "catalogue" };
+type RequestKind = "demo" | "pdf";
 
 const categoryImages: Record<string, string> = {
   Banking: "/card-banking.jpg",
@@ -45,8 +61,19 @@ const categoryImages: Record<string, string> = {
 };
 
 function productImage(product: Product) {
+  const productAssets: Array<[RegExp, string]> = [
+    [/financial analyst/i, "/product-financial-analyst.jpg"],
+    [/collection management/i, "/product-collection-management.jpg"],
+    [/compliclear|aml\/kyc/i, "/product-complyclear.jpg"],
+    [/los\s*\/\s*lms|loan origination|loan management/i, "/product-los-lms.jpg"],
+  ];
+  const matchedAsset = productAssets.find(([pattern]) => pattern.test(product.name));
+  if (matchedAsset) return matchedAsset[1];
   if (product.thumbnailUrl && !product.thumbnailUrl.startsWith("/catalogue-")) return product.thumbnailUrl;
   return categoryImages[product.category] || "/card-enterprise.jpg";
+}
+function productDisplayName(product: Product) {
+  return /^ai financial analyst$/i.test(product.name) ? "Finova AI Financial Analyst" : product.name;
 }
 
 function serviceImage(service: Service, index = 0) {
@@ -82,32 +109,41 @@ export default function Showcase() {
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState<SelectedItem>(null);
   const [meetingOpen, setMeetingOpen] = useState(false);
-  const [leadProduct, setLeadProduct] = useState<Product | null>(null);
   const [welcomeOpen, setWelcomeOpen] = useState(true);
   const [assistantOpen, setAssistantOpen] = useState(false);
+  const [requestKind, setRequestKind] = useState<RequestKind>("demo");
 
   useEffect(() => {
     fetch("/api/catalog")
       .then((response) => (response.ok ? (response.json() as Promise<Catalogue>) : Promise.reject()))
-      .then(setCatalogue)
+      .then((data) => {
+        setCatalogue(data);
+        const params = new URLSearchParams(window.location.search);
+        const productSlug = params.get("product");
+        const requested = params.get("request");
+        const initial = data.products.find((product) => product.slug === productSlug)
+          || data.products.find((product) => /financial analyst/i.test(product.name))
+          || data.products[0];
+        if (initial) setSelected({ type: "product", item: initial });
+        if (requested === "pdf" || requested === "demo") setRequestKind(requested);
+      })
       .catch(() => undefined);
   }, []);
 
   useEffect(() => {
-    document.body.style.overflow = selected || meetingOpen || leadProduct ? "hidden" : "";
+    document.body.style.overflow = meetingOpen || selected?.type === "service" ? "hidden" : "";
     return () => {
       document.body.style.overflow = "";
     };
-  }, [selected, meetingOpen, leadProduct]);
+  }, [meetingOpen, selected]);
 
   useEffect(() => {
     let timer: ReturnType<typeof setTimeout>;
     const activity = () => {
       clearTimeout(timer);
-      setWelcomeOpen(false);
-      if (!selected && !meetingOpen && !leadProduct) timer = setTimeout(() => setWelcomeOpen(true), 45_000);
+      if (!meetingOpen && !assistantOpen) timer = setTimeout(() => setWelcomeOpen(true), 60_000);
     };
-    if (!welcomeOpen && !selected && !meetingOpen && !leadProduct) timer = setTimeout(() => setWelcomeOpen(true), 45_000);
+    if (!welcomeOpen && !meetingOpen && !assistantOpen) timer = setTimeout(() => setWelcomeOpen(true), 60_000);
     window.addEventListener("pointerdown", activity, true);
     window.addEventListener("keydown", activity, true);
     return () => {
@@ -115,7 +151,7 @@ export default function Showcase() {
       window.removeEventListener("pointerdown", activity, true);
       window.removeEventListener("keydown", activity, true);
     };
-  }, [welcomeOpen, selected, meetingOpen, leadProduct]);
+  }, [welcomeOpen, meetingOpen, assistantOpen]);
 
   useEffect(() => {
     const elements = document.querySelectorAll<HTMLElement>("[data-reveal]");
@@ -126,220 +162,131 @@ export default function Showcase() {
     return () => observer.disconnect();
   }, [mode, category, search, catalogue]);
 
-  const categories = useMemo(
-    () => ["All", ...Array.from(new Set(catalogue.products.map((product) => product.category)))],
-    [catalogue.products],
-  );
-
+  const productPriority = ["AI Financial Analyst", "AI Collection Management", "CompliClear AML/KYC Solution", "LOS / LMS"];
   const products = catalogue.products.filter(
     (product) =>
       (category === "All" || product.category === category) &&
       `${product.name} ${product.shortDescription} ${product.category}`.toLowerCase().includes(search.toLowerCase()),
-  );
+  ).sort((a, b) => {
+    const aPriority = productPriority.findIndex((name) => a.name.toLowerCase().includes(name.toLowerCase().replace(" Solution", "")));
+    const bPriority = productPriority.findIndex((name) => b.name.toLowerCase().includes(name.toLowerCase().replace(" Solution", "")));
+    return (aPriority === -1 ? 99 : aPriority) - (bPriority === -1 ? 99 : bPriority) || a.displayOrder - b.displayOrder;
+  });
 
   const services = catalogue.services.filter((service) =>
     `${service.name} ${service.shortDescription}`.toLowerCase().includes(search.toLowerCase()),
   );
 
   const openMeeting = () => catalogue.settings.meetingEnabled && setMeetingOpen(true);
-  const chooseJourney = (nextCategory: string) => {
-    setMode("products");
-    setCategory(nextCategory);
-    setSearch("");
-    requestAnimationFrame(() => document.getElementById("catalogue")?.scrollIntoView({ behavior: "smooth" }));
-  };
   const openAssistantRecommendation = (recommendation: AssistantRecommendation) => {
     if (recommendation.type === "product") {
       const product = catalogue.products.find((item) => item.id === recommendation.id);
-      if (product) setSelected({ type: "product", item: product });
+      if (product) { setSelected({ type: "product", item: product }); setRequestKind("demo"); }
     } else {
       const service = catalogue.services.find((item) => item.id === recommendation.id);
       if (service) setSelected({ type: "service", item: service });
     }
   };
 
+  const activeProduct = selected?.type === "product"
+    ? selected.item
+    : catalogue.products.find((product) => /financial analyst/i.test(product.name)) || products[0];
+
+  const selectProduct = (product: Product, kind: RequestKind = requestKind) => {
+    setSelected({ type: "product", item: product });
+    setRequestKind(kind);
+    const nextUrl = new URL(window.location.href);
+    nextUrl.searchParams.set("product", product.slug);
+    nextUrl.searchParams.set("request", kind);
+    window.history.replaceState({}, "", nextUrl);
+  };
+
   return (
-    <main className="catalog-app">
-      <header className="app-bar">
-        <Link className="app-brand" href="/" aria-label="MYTM catalogue home">
-          <img className="mytm-registered-logo" src="/mytm-registered-logo.png" alt="MYTM" />
-          <span />
-          <strong>Interactive Catalogue</strong>
+    <main className="product-os">
+      <header className="os-header">
+        <Link className="os-brand" href="/" aria-label="MYTM catalogue home">
+          <img src="/mytm-registered-logo.png" alt="MYTM" />
         </Link>
-        <nav className="top-catalog-nav" aria-label="Catalogue navigation">
+        <nav className="os-nav" aria-label="Catalogue navigation">
           <button className={mode === "products" ? "active" : ""} onClick={() => { setMode("products"); document.getElementById("catalogue")?.scrollIntoView({ behavior: "smooth" }); }}>Products</button>
           <button className={mode === "services" ? "active" : ""} onClick={() => { setMode("services"); document.getElementById("catalogue")?.scrollIntoView({ behavior: "smooth" }); }}>Services</button>
-          <button onClick={() => document.getElementById("partners")?.scrollIntoView({ behavior: "smooth" })}>Partners & clients</button>
+          <button onClick={() => document.getElementById("partners")?.scrollIntoView({ behavior: "smooth" })}>Partners &amp; Clients</button>
         </nav>
-        <div className="app-bar-actions">
-          <button className="ai-header-trigger" onClick={() => setAssistantOpen(true)}><i>✦</i> Ask MYTM AI</button>
-          <button onClick={openMeeting}>{catalogue.settings.meetingLabel}</button>
-        </div>
+        <button className="os-sales" onClick={openMeeting}>Talk to Sales</button>
       </header>
 
-      <div className="app-frame">
-        <section className="catalog-main">
-          <section className="catalog-story" aria-labelledby="catalog-story-title">
-            <div className="story-spectrum" aria-hidden="true"><i /><i /><i /></div>
-            <div className="story-copy">
-              <span>MYTM DIGITAL EXPERIENCE CENTRE</span>
-              <button className="ai-discovery-pill" onClick={() => setAssistantOpen(true)}><i>✦</i> AI-guided discovery is live <b>Try it →</b></button>
-              <h1 id="catalog-story-title">Touch. Discover.<br /><em>Transform.</em></h1>
-              <p>Explore the technology powering modern finance. Tap any product or service to see its story, watch a demo, open its deck or meet our team.</p>
-              <div className="story-actions">
-                <button onClick={() => document.getElementById("catalogue")?.scrollIntoView({ behavior: "smooth" })}>Explore catalogue</button>
-                <button onClick={openMeeting}>Talk to MYTM</button>
-              </div>
-            </div>
-            <div className="story-visual">
-              <img src="/finova-cover.png" alt="MYTM digital lending and AI product experience" />
-              <div><strong>{catalogue.products.length}+</strong><span>Products</span></div>
-              <div><strong>{catalogue.services.length}</strong><span>Services</span></div>
-            </div>
-          </section>
+      <section className="os-hero" aria-labelledby="product-os-title">
+        <img src="/product-os-hero.jpg" alt="Composable MYTM product ecosystem" />
+        <div className="os-hero-copy">
+          <span>MODULAR SPECTRUM</span>
+          <h1 id="product-os-title">Product <em>OS</em></h1>
+          <p>Composable building blocks for modern financial ecosystems.<br />Select. Connect. Launch.</p>
+        </div>
+      </section>
 
-          <section className="executive-dashboard" aria-labelledby="executive-dashboard-title" data-reveal>
-            <div className="dashboard-heading">
-              <div><span><i /> LIVE CATALOGUE INTELLIGENCE</span><h2 id="executive-dashboard-title">Navigate MYTM by business priority.</h2></div>
-              <p>A decision-ready view of the products, services and expertise available to accelerate your next digital initiative.</p>
-            </div>
-            <div className="dashboard-stats" aria-label="Catalogue statistics">
-              <article><small>Digital products</small><strong>{catalogue.products.length}</strong><span>Across {Math.max(1, categories.length - 1)} solution categories</span></article>
-              <article><small>Expert services</small><strong>{catalogue.services.length}</strong><span>From strategy through delivery</span></article>
-              <article><small>Featured solutions</small><strong>{catalogue.products.filter((product) => product.featured).length}</strong><span>Curated for faster discovery</span></article>
-              <article><small>Meeting journey</small><strong>1:1</strong><span>Direct access to MYTM specialists</span></article>
-            </div>
-            <div className="dashboard-journeys" aria-label="Explore catalogue by priority">
+      <section className="os-catalogue" id="catalogue">
+        <div className="os-toolbar">
+          {mode === "products" ? (
+            <div className="os-categories" aria-label="Product categories">
               {[
-                ["01", "Banking & payments", "Banking", "Modern financial infrastructure"],
-                ["02", "Lending & collections", "Lending", "End-to-end credit technology"],
-                ["03", "AI & intelligence", "AI", "Decision-ready automation"],
-                ["04", "Security & compliance", "Compliance", "Trust, identity and resilience"],
-              ].map(([number, title, journeyCategory, description]) => (
-                <button key={title} onClick={() => chooseJourney(journeyCategory)}>
-                  <span>{number}</span><div><strong>{title}</strong><small>{description}</small></div><i>↗</i>
+                ["All", Cube], ["AI", Sparkle], ["Compliance", ShieldCheck], ["Lending", Stack],
+                ["Payments", Wallet], ["Banking", Bank], ["Cards", CardsThree], ["Enterprise", Cube],
+              ].map(([item, Icon]) => (
+                <button key={String(item)} className={category === item ? "active" : ""} onClick={() => setCategory(String(item))}>
+                  <Icon size={19} weight="duotone" /><span>{item === "All" ? "All Products" : item}</span>
                 </button>
               ))}
             </div>
-          </section>
+          ) : <div className="os-section-title"><span>MYTM SERVICES</span><strong>Expertise that moves ideas into production.</strong></div>}
+          <label className="os-search">
+            <MagnifyingGlass size={20} />
+            <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder={`Search ${mode}`} aria-label={`Search ${mode}`} />
+            {search && <button onClick={() => setSearch("")} aria-label="Clear search"><X size={16} /></button>}
+          </label>
+        </div>
 
-          <section className="partner-showcase" id="partners" aria-labelledby="partners-title" data-reveal>
-            <div className="partner-heading">
-              <span>TRUSTED ECOSYSTEM</span>
-              <h2 id="partners-title">Our partners & clients</h2>
-              <p>Built alongside organizations shaping payments, banking, lending and digital transformation.</p>
-            </div>
-            <img src="/mytm-partners-clients.png" alt="MYTM partners and clients including RentRacks, 1Bill, Mastercard, PayFast, SAMA, RIDE, Rabee and others" />
-          </section>
-
-          <div className="catalogue-toolbar" id="catalogue">
-            <div className="catalogue-mode-switch" role="tablist" aria-label="Catalogue type">
-              <button className={mode === "products" ? "active" : ""} onClick={() => setMode("products")}><span>Products</span><b>{catalogue.products.length}</b></button>
-              <button className={mode === "services" ? "active" : ""} onClick={() => setMode("services")}><span>Services</span><b>{catalogue.services.length}</b></button>
-            </div>
-            <label className="catalog-search">
-              <span>Search</span>
-              <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Find a product or service" aria-label="Search catalogue" />
-              {search && <button onClick={() => setSearch("")} aria-label="Clear search">×</button>}
-            </label>
-          </div>
-
-          <div className="catalog-heading" data-reveal>
-            <div>
-              <span className="welcome-pill">EXPLORE THE CATALOGUE</span>
-              <h2>{mode === "products" ? "Products built for progress" : "Services that move you forward"}</h2>
-              <p>
-                {mode === "products"
-                  ? "Tap a card to explore capabilities, watch videos, view product decks and book a tailored demonstration."
-                  : "Discover expert support for delivery, quality, security and technology transformation."}
-              </p>
-            </div>
-            <div className="view-summary">
-              <strong>{mode === "products" ? products.length : services.length}</strong>
-              <span>{mode === "products" ? "products" : "services"}</span>
-            </div>
-          </div>
-
-          {mode === "products" && (
-            <div className="catalog-chips" aria-label="Product categories">
-              {categories.map((item) => (
-                <button className={category === item ? "active" : ""} key={item} onClick={() => setCategory(item)}>{item}</button>
-              ))}
-            </div>
-          )}
-
-          {mode === "products" ? (
-            <div className="catalog-grid" data-reveal>
+        {mode === "products" ? (
+          <div className="os-workspace">
+            <div className="os-product-grid">
               {products.map((product) => (
-                <ProductCard key={product.id} product={product} onOpen={() => setSelected({ type: "product", item: product })} />
+                <OSProductCard key={product.id} product={product} active={activeProduct?.id === product.id} onOpen={() => selectProduct(product)} />
               ))}
+              {!products.length && <div className="os-empty"><MagnifyingGlass size={30} /><h2>No products found</h2><p>Try another category or search term.</p><button onClick={() => { setSearch(""); setCategory("All"); }}>Show all products</button></div>}
             </div>
-          ) : (
-            <div className="catalog-grid services-catalog-grid" data-reveal>
-              {services.map((service, index) => (
-                <ServiceCard key={service.id} service={service} index={index} onOpen={() => setSelected({ type: "service", item: service })} />
-              ))}
-            </div>
-          )}
+            {activeProduct && (
+              <OSProductRail
+                product={activeProduct}
+                kind={requestKind}
+                onKindChange={(kind) => selectProduct(activeProduct, kind)}
+                onTalkToSales={openMeeting}
+              />
+            )}
+          </div>
+        ) : (
+          <div className="os-service-grid">
+            {services.map((service, index) => <OSServiceCard key={service.id} service={service} index={index} onOpen={() => setSelected({ type: "service", item: service })} />)}
+          </div>
+        )}
+      </section>
 
-          {mode === "products" && products.length === 0 && (
-            <div className="catalog-empty"><span>⌕</span><h2>No products found</h2><p>Try another category or search term.</p><button onClick={() => { setSearch(""); setCategory("All"); }}>Show all products</button></div>
-          )}
+      <section className="os-partners" id="partners">
+        <div><span>TRUSTED ECOSYSTEM</span><h2>Our partners &amp; clients</h2><p>Built alongside organizations shaping payments, banking, lending and digital transformation.</p></div>
+        <img src="/mytm-partners-clients.png" alt="MYTM partners and clients" />
+      </section>
 
-          <section className="catalogue-cta" data-reveal>
-            <div><span>READY TO GO DEEPER?</span><h2>Let’s build your next digital financial experience.</h2></div>
-            <button onClick={openMeeting}>{catalogue.settings.meetingLabel}</button>
-          </section>
-        </section>
-      </div>
+      <button className="os-ai-trigger" onClick={() => setAssistantOpen(true)}><Robot size={24} weight="duotone" /> Ask MYTM AI</button>
 
-      <CatalogueAssistant
-        open={assistantOpen}
-        onOpenChange={setAssistantOpen}
-        onRecommendation={openAssistantRecommendation}
-        onMeeting={openMeeting}
-      />
+      <CatalogueAssistant open={assistantOpen} onOpenChange={setAssistantOpen} onRecommendation={openAssistantRecommendation} onMeeting={openMeeting} />
+      {selected?.type === "service" && <ServicePanel service={selected.item} onClose={() => setSelected(null)} onMeeting={openMeeting} />}
+      {meetingOpen && <MeetingModal settings={catalogue.settings} onClose={() => setMeetingOpen(false)} />}
 
-      <nav className="app-bottom-nav" aria-label="Mobile catalogue navigation">
-        <button className={mode === "products" ? "active" : ""} onClick={() => setMode("products")}><span>Products</span></button>
-        <button className={mode === "services" ? "active" : ""} onClick={() => setMode("services")}><span>Services</span></button>
-        <button onClick={() => document.getElementById("partners")?.scrollIntoView({ behavior: "smooth" })}><span>Clients</span></button>
-        <button onClick={openMeeting}><span>Meeting</span></button>
+      <nav className="os-mobile-nav" aria-label="Mobile catalogue navigation">
+        <button className={mode === "products" ? "active" : ""} onClick={() => setMode("products")}>Products</button>
+        <button className={mode === "services" ? "active" : ""} onClick={() => setMode("services")}>Services</button>
+        <button onClick={() => document.getElementById("partners")?.scrollIntoView({ behavior: "smooth" })}>Clients</button>
+        <button onClick={openMeeting}>Sales</button>
       </nav>
 
-      {selected?.type === "product" && (
-        <ProductPanel
-          product={selected.item}
-          onClose={() => setSelected(null)}
-          onMeeting={openMeeting}
-          onDeck={() => {
-            if (selected.item.requireLead && !sessionStorage.getItem("mytm-lead-captured")) {
-              setLeadProduct(selected.item);
-            } else if (selected.item.pdfUrl) {
-              window.open(selected.item.pdfUrl, "_blank", "noopener,noreferrer");
-            } else {
-              setLeadProduct(selected.item);
-            }
-          }}
-        />
-      )}
-      {selected?.type === "service" && (
-        <ServicePanel service={selected.item} onClose={() => setSelected(null)} onMeeting={openMeeting} />
-      )}
-      {meetingOpen && <MeetingModal settings={catalogue.settings} onClose={() => setMeetingOpen(false)} />}
-      {leadProduct && (
-        <LeadModal
-          catalogue={catalogue}
-          product={leadProduct}
-          onClose={() => setLeadProduct(null)}
-          onSuccess={() => {
-            sessionStorage.setItem("mytm-lead-captured", "true");
-            const url = leadProduct.pdfUrl;
-            setLeadProduct(null);
-            if (url) window.open(url, "_blank", "noopener,noreferrer");
-          }}
-        />
-      )}
       {welcomeOpen && (
         <section className="idle-experience" aria-label="Welcome to the MYTM catalogue">
           <video autoPlay muted loop playsInline poster="/finova-cover.png" src="/api/media?key=finova-product-video.mp4"><track kind="captions" src="/empty.vtt" srcLang="en" label="English" /></video>
@@ -347,13 +294,127 @@ export default function Showcase() {
           <div className="idle-content">
             <img className="mytm-registered-logo" src="/mytm-registered-logo.png" alt="MYTM" />
             <span>MYTM DIGITAL EXPERIENCE CENTRE</span>
-            <h1>Touch to see MYTM’s products & services</h1>
+            <h1>Touch to see MYTM’s products &amp; services</h1>
             <p>Step into the future of finance. Explore solutions, watch product stories and connect with our team.</p>
-            <button onClick={() => setWelcomeOpen(false)}>Touch anywhere to explore</button>
+            <button onClick={(event) => { event.stopPropagation(); setWelcomeOpen(false); }}>Touch anywhere to explore</button>
           </div>
         </section>
       )}
     </main>
+  );
+}
+
+function OSProductCard({ product, active, onOpen }: { product: Product; active: boolean; onOpen: () => void }) {
+  return (
+    <article className={`os-product-card ${active ? "active" : ""}`}>
+      <button onClick={onOpen} aria-label={`Explore ${productDisplayName(product)}`}>
+        <div className="os-product-image">
+          <img src={productImage(product)} alt={`${productDisplayName(product)} product visual`} loading="lazy" decoding="async" />
+          {product.featured && <span><Sparkle size={14} weight="fill" /> Featured</span>}
+        </div>
+        <div className="os-product-copy">
+          <small>{product.category}</small>
+          <h2>{productDisplayName(product)}</h2>
+          <p>{product.shortDescription}</p>
+          <i><ArrowRight size={19} /></i>
+        </div>
+      </button>
+    </article>
+  );
+}
+
+function OSServiceCard({ service, index, onOpen }: { service: Service; index: number; onOpen: () => void }) {
+  return (
+    <article className="os-service-card">
+      <button onClick={onOpen} aria-label={`Explore ${service.name}`}>
+        <img src={serviceImage(service, index)} alt={`${service.name} service visual`} loading="lazy" />
+        <div><small>MYTM SERVICE</small><h2>{service.name}</h2><p>{service.shortDescription}</p><span>Explore service <ArrowRight size={18} /></span></div>
+      </button>
+    </article>
+  );
+}
+
+function OSProductRail({ product, kind, onKindChange, onTalkToSales }: { product: Product; kind: RequestKind; onKindChange: (kind: RequestKind) => void; onTalkToSales: () => void }) {
+  return (
+    <aside className="os-product-rail" aria-label={`${product.name} request panel`}>
+      <div className="os-rail-heading">
+        <span><Sparkle size={15} weight="fill" /> {product.featured ? "Featured" : product.category}</span>
+        <h2>{productDisplayName(product)}</h2>
+        <p>{product.fullDescription || product.shortDescription}</p>
+      </div>
+      <div className="os-feature-list">
+        {product.features.slice(0, 4).map((feature) => <span key={feature}><CheckCircle size={17} weight="fill" /> {feature}</span>)}
+      </div>
+      <div className="os-request-tabs" role="tablist" aria-label="Request type">
+        <button role="tab" aria-selected={kind === "demo"} className={kind === "demo" ? "active" : ""} onClick={() => onKindChange("demo")}>Request Demo</button>
+        <button role="tab" aria-selected={kind === "pdf"} className={kind === "pdf" ? "active" : ""} onClick={() => onKindChange("pdf")}>Request PDF</button>
+      </div>
+      <LeadRequestForm key={`${product.id}-${kind}`} product={product} kind={kind} onTalkToSales={onTalkToSales} />
+    </aside>
+  );
+}
+
+function LeadRequestForm({ product, kind, onTalkToSales }: { product: Product; kind: RequestKind; onTalkToSales: () => void }) {
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+  const [submitted, setSubmitted] = useState(false);
+
+  async function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setSaving(true);
+    setError("");
+    const values = Object.fromEntries(new FormData(event.currentTarget).entries());
+    try {
+      const response = await fetch("/api/leads", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          ...values,
+          phone: "",
+          company: "",
+          notes: kind === "demo" ? "Customer requested a product demonstration." : "Customer requested the product PDF.",
+          requestType: kind === "demo" ? "Demo" : "PDF",
+          source: kind === "demo" ? "Demo Request" : "PDF Request",
+          contentAccessed: product.name,
+          productInterest: product.name,
+          serviceInterest: "None",
+        }),
+      });
+      const payload = await response.json() as { error?: string };
+      if (!response.ok) throw new Error(payload.error || "Unable to submit your request.");
+      setSubmitted(true);
+    } catch (submissionError) {
+      setError(submissionError instanceof Error ? submissionError.message : "Please check your details and try again.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  if (submitted) {
+    return (
+      <div className="os-request-success" aria-live="polite">
+        <CheckCircle size={38} weight="fill" />
+        <h3>{kind === "demo" ? "Demo request received" : "Your PDF is ready"}</h3>
+        <p>{kind === "demo" ? "Our product team has your preferred date and will confirm the session by email." : "Your request is saved in the MYTM backoffice."}</p>
+        {kind === "pdf" && product.pdfUrl ? <a href={product.pdfUrl} target="_blank" rel="noreferrer"><FilePdf size={19} /> Open product PDF</a> : null}
+        {kind === "demo" ? <button onClick={onTalkToSales}>Choose a time now</button> : null}
+      </div>
+    );
+  }
+
+  return (
+    <form className="os-request-form" onSubmit={submit}>
+      <div className="os-form-grid">
+        <label>Name<input name="name" autoComplete="name" required placeholder="Your full name" /></label>
+        <label>Email<input name="email" type="email" autoComplete="email" required placeholder="Work email" /></label>
+        <label>Designation<input name="designation" autoComplete="organization-title" required placeholder="Your role" /></label>
+        {kind === "demo" && <label>Preferred date<input name="preferredDate" type="date" min={new Date().toISOString().slice(0, 10)} required /></label>}
+      </div>
+      {kind === "pdf" && <p className="os-date-note"><FilePdf size={16} /> PDF requests do not require a date.</p>}
+      {error && <p className="os-request-error" role="alert">{error}</p>}
+      <button className="os-submit" disabled={saving}>{saving ? "Submitting…" : "Submit request"}</button>
+      <small>By submitting, you agree that MYTM may contact you about this request.</small>
+    </form>
   );
 }
 
@@ -400,66 +461,6 @@ function CatalogueAssistant({ open, onOpenChange, onRecommendation, onMeeting }:
   </div>;
 }
 
-function ProductCard({ product, onOpen }: { product: Product; onOpen: () => void }) {
-  return (
-    <article className="catalog-card">
-      <button className="card-image-button" onClick={onOpen} aria-label={`View ${product.name}`}>
-        <img src={productImage(product)} alt={`${product.name} catalogue visual`} loading="lazy" decoding="async" />
-        <span className="card-category">{product.category}</span>
-        {product.featured && <span className="card-featured">Featured</span>}
-      </button>
-      <div className="catalog-card-body">
-        <h2>{product.name}</h2>
-        <p>{product.shortDescription}</p>
-        <div className="card-info-row">
-          <span>{product.videoUrl ? "▶ Video" : "Overview"}</span>
-          <span>{product.pdfUrl ? "▤ PDF" : "Deck on request"}</span>
-        </div>
-        <button className="open-card" onClick={onOpen}>View details <span>›</span></button>
-      </div>
-    </article>
-  );
-}
-
-function ServiceCard({ service, index, onOpen }: { service: Service; index: number; onOpen: () => void }) {
-  return (
-    <article className="catalog-card service-catalog-card">
-      <button className="card-image-button" onClick={onOpen} aria-label={`View ${service.name}`}>
-        <img src={serviceImage(service, index)} alt={`${service.name} service visual`} loading="lazy" decoding="async" />
-        <span className="card-category">Service</span>
-      </button>
-      <div className="catalog-card-body">
-        <h2>{service.name}</h2>
-        <p>{service.shortDescription}</p>
-        <div className="service-mini-features">{service.features.slice(0, 3).map((feature) => <span key={feature}>{feature}</span>)}</div>
-        <button className="open-card" onClick={onOpen}>View service <span>›</span></button>
-      </div>
-    </article>
-  );
-}
-
-function ProductPanel({ product, onClose, onMeeting, onDeck }: { product: Product; onClose: () => void; onMeeting: () => void; onDeck: () => void }) {
-  const embedUrl = product.videoUrl ? videoEmbedUrl(product.videoUrl) : "";
-  return (
-    <div className="panel-backdrop" role="button" tabIndex={0} aria-label="Close product details" onKeyDown={(event) => event.key === "Escape" && onClose()} onMouseDown={(event) => event.target === event.currentTarget && onClose()}>
-      <aside className="detail-panel" role="dialog" aria-modal="true" aria-label={product.name}>
-        <button className="panel-close" onClick={onClose} aria-label="Close">×</button>
-        <div className="detail-picture"><img src={productImage(product)} alt="" /><span>{product.category}</span></div>
-        <div className="detail-content">
-          <small>MYTM PRODUCT</small>
-          <h2>{product.name}</h2>
-          <p className="detail-lead">{product.shortDescription}</p>
-          <p className="detail-description">{product.fullDescription}</p>
-          {product.videoUrl && <section className="detail-media"><h3>Product video</h3>{isDirectVideo(product.videoUrl) ? <video controls playsInline preload="metadata" poster={productImage(product)} src={product.videoUrl}><track kind="captions" src="/empty.vtt" srcLang="en" label="English" /></video> : embedUrl ? <iframe title={`${product.name} video`} src={embedUrl} allow="autoplay; fullscreen; picture-in-picture" allowFullScreen /> : <a href={product.videoUrl} target="_blank" rel="noreferrer">Watch product video ↗</a>}</section>}
-          <section><h3>Key features</h3><div className="feature-list">{product.features.map((feature) => <div key={feature}><i>✓</i><span>{feature}</span></div>)}</div></section>
-          <section><h3>Business benefits</h3><div className="benefit-list">{product.benefits.map((benefit) => <span key={benefit}>{benefit}</span>)}</div></section>
-        </div>
-        <div className="detail-actions"><button className="outline-action" onClick={onDeck}>{product.pdfUrl ? "View PDF" : "Request PDF"}</button><button className="red-action" onClick={onMeeting}>Book a demo</button></div>
-      </aside>
-    </div>
-  );
-}
-
 function ServicePanel({ service, onClose, onMeeting }: { service: Service; onClose: () => void; onMeeting: () => void }) {
   const embedUrl = service.videoUrl ? videoEmbedUrl(service.videoUrl) : "";
   return (
@@ -491,25 +492,5 @@ function MeetingModal({ settings, onClose }: { settings: SiteSettings; onClose: 
         )}
       </section>
     </div>
-  );
-}
-
-function LeadModal({ catalogue, product, onClose, onSuccess }: { catalogue: Catalogue; product: Product; onClose: () => void; onSuccess: () => void }) {
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState("");
-  async function submit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault(); setSaving(true); setError("");
-    const values = Object.fromEntries(new FormData(event.currentTarget).entries());
-    try {
-      const response = await fetch("/api/leads", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ ...values, source: "Product Deck", contentAccessed: product.name, productInterest: values.productInterest || product.name, serviceInterest: values.serviceInterest || "None" }) });
-      if (!response.ok) throw new Error();
-      onSuccess();
-    } catch {
-      setError("Please check your details and try again."); setSaving(false);
-    }
-  }
-  const config = catalogue.settings.formConfig;
-  return (
-    <div className="app-modal-backdrop"><section className="app-modal lead-app-modal" role="dialog" aria-modal="true"><header><div><small>PRODUCT DECK</small><h2>Enter your details</h2><p>Tell us what interests you, then continue to the deck.</p></div><button onClick={onClose}>×</button></header><form onSubmit={submit}><label>Full name<input name="name" required={config.requireName} /></label><label>Contact number<input name="phone" required={config.requirePhone} /></label><label>Business email<input name="email" type="email" required={config.requireEmail} /></label><label>Company name<input name="company" required={config.requireCompany} /></label>{config.showProductInterest && <label>Product interest<select name="productInterest" defaultValue={product.name}><option value="None">None</option>{catalogue.products.map((item) => <option key={item.id} value={item.name}>{item.name}</option>)}<option value="Something else">Something else</option></select></label>}{config.showServiceInterest && <label>Service interest<select name="serviceInterest" defaultValue="None"><option value="None">None</option>{catalogue.services.map((item) => <option key={item.id} value={item.name}>{item.name}</option>)}<option value="Something else">Something else</option></select></label>}<label>Notes / something else<textarea name="notes" rows={3} required={config.requireNotes} placeholder="What are you most interested in?" /></label>{error && <p className="lead-error">{error}</p>}<button disabled={saving}>{saving ? "Submitting..." : product.pdfUrl ? "Continue to deck" : "Request product deck"}</button></form></section></div>
   );
 }

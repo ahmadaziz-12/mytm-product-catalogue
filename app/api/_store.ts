@@ -5,7 +5,7 @@ const schemaStatements = [
   `CREATE TABLE IF NOT EXISTS products (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, slug TEXT NOT NULL UNIQUE, category TEXT NOT NULL, short_description TEXT NOT NULL, full_description TEXT NOT NULL, features TEXT NOT NULL, benefits TEXT NOT NULL, thumbnail_url TEXT NOT NULL DEFAULT '', video_url TEXT NOT NULL DEFAULT '', pdf_url TEXT NOT NULL DEFAULT '', featured INTEGER NOT NULL DEFAULT 0, require_lead INTEGER NOT NULL DEFAULT 1, active INTEGER NOT NULL DEFAULT 1, display_order INTEGER NOT NULL DEFAULT 0)`,
   `CREATE TABLE IF NOT EXISTS services (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, slug TEXT NOT NULL UNIQUE, short_description TEXT NOT NULL, features TEXT NOT NULL, cta TEXT NOT NULL, thumbnail_url TEXT NOT NULL DEFAULT '', video_url TEXT NOT NULL DEFAULT '', pdf_url TEXT NOT NULL DEFAULT '', active INTEGER NOT NULL DEFAULT 1, display_order INTEGER NOT NULL DEFAULT 0)`,
   `CREATE TABLE IF NOT EXISTS case_studies (id INTEGER PRIMARY KEY AUTOINCREMENT, client_name TEXT NOT NULL, challenge TEXT NOT NULL, solution TEXT NOT NULL, impact TEXT NOT NULL, active INTEGER NOT NULL DEFAULT 1, display_order INTEGER NOT NULL DEFAULT 0)`,
-  `CREATE TABLE IF NOT EXISTS leads (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, phone TEXT NOT NULL, email TEXT NOT NULL, company TEXT NOT NULL, notes TEXT NOT NULL, product_interest TEXT NOT NULL DEFAULT 'None', service_interest TEXT NOT NULL DEFAULT 'None', source TEXT NOT NULL, content_accessed TEXT NOT NULL DEFAULT '', status TEXT NOT NULL DEFAULT 'New', created_at TEXT NOT NULL)`,
+  `CREATE TABLE IF NOT EXISTS leads (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, phone TEXT NOT NULL, email TEXT NOT NULL, company TEXT NOT NULL, designation TEXT NOT NULL DEFAULT '', preferred_date TEXT NOT NULL DEFAULT '', request_type TEXT NOT NULL DEFAULT 'General', notes TEXT NOT NULL, product_interest TEXT NOT NULL DEFAULT 'None', service_interest TEXT NOT NULL DEFAULT 'None', source TEXT NOT NULL, content_accessed TEXT NOT NULL DEFAULT '', status TEXT NOT NULL DEFAULT 'New', created_at TEXT NOT NULL)`,
   `CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT NOT NULL)`,
   `CREATE TABLE IF NOT EXISTS media (id INTEGER PRIMARY KEY AUTOINCREMENT, key TEXT NOT NULL UNIQUE, filename TEXT NOT NULL, content_type TEXT NOT NULL, url TEXT NOT NULL, created_at TEXT NOT NULL)`,
   `CREATE INDEX IF NOT EXISTS idx_products_active_order ON products(active, display_order)`,
@@ -36,6 +36,14 @@ export async function ensureStore() {
         ["pdf_url", "ALTER TABLE services ADD COLUMN pdf_url TEXT NOT NULL DEFAULT ''"],
       ] as const) {
         if (!serviceColumns.results.some((column: any) => column.name === name)) await db.prepare(sql).run();
+      }
+      const leadColumns = await db.prepare("PRAGMA table_info(leads)").all() as { results: { name: string }[] };
+      for (const [name, sql] of [
+        ["designation", "ALTER TABLE leads ADD COLUMN designation TEXT NOT NULL DEFAULT ''"],
+        ["preferred_date", "ALTER TABLE leads ADD COLUMN preferred_date TEXT NOT NULL DEFAULT ''"],
+        ["request_type", "ALTER TABLE leads ADD COLUMN request_type TEXT NOT NULL DEFAULT 'General'"],
+      ] as const) {
+        if (!leadColumns.results.some((column: any) => column.name === name)) await db.prepare(sql).run();
       }
       await seedStore();
       await db.prepare("PRAGMA optimize").run();
