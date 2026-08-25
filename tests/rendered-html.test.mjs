@@ -31,7 +31,7 @@ test("server-renders the MYTM Product OS catalogue in browsing mode", async () =
   assert.match(html, /SOLUTIONS BY AMBITION/);
   assert.match(html, /Start with the outcome you need/);
   assert.match(html, /FROM AMBITION TO OPERATIONS/);
-  assert.match(html, /Backoffice admin/);
+  assert.doesNotMatch(html, /Backoffice admin/);
   assert.doesNotMatch(html, /Touch anywhere to explore/);
   assert.doesNotMatch(html, /class="os-product-rail"/);
 });

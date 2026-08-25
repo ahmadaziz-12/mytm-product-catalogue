@@ -1220,7 +1220,7 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
 .os-footer-cta h2 { max-width:720px; margin:11px 0 9px; font-family:"Inter Tight","Inter",sans-serif; font-size:clamp(30px,3.4vw,50px); line-height:1.02; letter-spacing:-.05em; }
 .os-footer-cta p { max-width:650px; margin:0; color:#b9b0bd; font-size:12px; line-height:1.65; }
 .os-footer-cta>button { min-height:54px; position:relative; z-index:1; flex:0 0 auto; display:flex; align-items:center; gap:10px; padding:0 22px; border:1px solid rgba(255,255,255,.18); border-radius:15px; background:#ed1233; color:#fff; font-size:12px; font-weight:850; box-shadow:0 16px 32px rgba(237,18,51,.28); }
-.os-footer-main { display:grid; grid-template-columns:1.6fr .7fr 1fr .8fr; gap:clamp(28px,5vw,80px); padding:25px clamp(28px,5vw,80px) 52px; }
+.os-footer-main { display:grid; grid-template-columns:1.6fr .75fr 1fr; gap:clamp(28px,6vw,100px); padding:25px clamp(28px,5vw,80px) 52px; }
 .os-footer-main>div,.os-footer-main>nav { display:flex; flex-direction:column; align-items:flex-start; gap:12px; }
 .os-footer-brand img { width:116px; filter:brightness(0) invert(1); }
 .os-footer-brand p { max-width:330px; margin:4px 0 10px; color:#918996; font-size:12px; line-height:1.7; }
@@ -1260,7 +1260,7 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
 
 @media(max-width:1100px) {
   .os-header { grid-template-columns:auto 1fr auto; }.os-brand>span { display:none; }.os-nav { gap:2px; }.os-nav button { padding-inline:12px; }.os-header-search { width:180px; }
-  .os-footer-main { grid-template-columns:1.4fr 1fr 1fr; }.os-footer-main>div:last-child { grid-column:2/4; }
+  .os-footer-main { grid-template-columns:1.4fr 1fr 1fr; }
   .admin-system-live { display:none; }
 }
 @media(max-width:820px) {
