@@ -124,3 +124,16 @@ test("lets admins upload and attach product decks from the editor", async () => 
   assert.match(mediaRoute, /allowedExtensions/);
   assert.match(mediaRoute, /Files must be smaller than 95 MB/);
 });
+
+test("showcases attached product decks inside the customer catalogue", async () => {
+  const showcase = await readFile(new URL("../app/Showcase.tsx", import.meta.url), "utf8");
+
+  assert.match(showcase, /Deck available/);
+  assert.match(showcase, /View Product Deck/);
+  assert.match(showcase, /function ProductDeckViewer/);
+  assert.match(showcase, /productDeckFormat/);
+  assert.match(showcase, /<iframe src=\{product\.pdfUrl\}/);
+  assert.match(showcase, /onDeckUnlocked/);
+  assert.match(showcase, /Your access request has been saved in the MYTM backoffice/);
+  assert.match(showcase, /PowerPoint decks open in a dedicated viewer/);
+});

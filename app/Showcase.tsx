@@ -106,6 +106,13 @@ function isDirectVideo(url: string) {
   return url.startsWith("/api/media") || /\.(mp4|webm|ogg)(?:\?|$)/i.test(url);
 }
 
+function productDeckFormat(url: string) {
+  const normalized = decodeURIComponent(url).toLowerCase();
+  if (normalized.includes(".pdf")) return "pdf" as const;
+  if (normalized.includes(".pptx") || normalized.includes(".ppt")) return "powerpoint" as const;
+  return "document" as const;
+}
+
 export default function Showcase() {
   const [catalogue, setCatalogue] = useState<Catalogue>({
     products: seedProducts,
@@ -296,6 +303,7 @@ export default function Showcase() {
             </div>
             {activeProduct && (
               <OSProductRail
+                key={activeProduct.id}
                 product={activeProduct}
                 kind={requestKind}
                 onKindChange={(kind) => selectProduct(activeProduct, kind)}
@@ -371,6 +379,7 @@ function OSProductCard({ product, active, onOpen }: { product: Product; active: 
         <div className="os-product-image">
           <img src={productImage(product)} alt={`${productDisplayName(product)} product visual`} loading="lazy" decoding="async" />
           {product.featured && <span><Sparkle size={14} weight="fill" /> Featured</span>}
+          {product.pdfUrl && <small className="os-deck-badge"><FilePdf size={14} weight="fill" /> Deck available</small>}
         </div>
         <div className="os-product-copy">
           <small>{product.category}</small>
@@ -395,6 +404,8 @@ function OSServiceCard({ service, index, onOpen }: { service: Service; index: nu
 }
 
 function OSProductRail({ product, kind, onKindChange, onClose }: { product: Product; kind: RequestKind; onKindChange: (kind: RequestKind) => void; onClose: () => void }) {
+  const [deckUnlocked, setDeckUnlocked] = useState(!product.requireLead);
+
   return (
     <aside className="os-product-rail" id="product-request-panel" aria-label={`${product.name} request panel`}>
       <button className="os-rail-close" onClick={onClose} aria-label="Close product request"><X size={18} /></button>
@@ -406,16 +417,27 @@ function OSProductRail({ product, kind, onKindChange, onClose }: { product: Prod
       <div className="os-feature-list">
         {product.features.slice(0, 4).map((feature) => <span key={feature}><CheckCircle size={17} weight="fill" /> {feature}</span>)}
       </div>
+      {product.pdfUrl && kind !== "pdf" && (
+        <button className="os-deck-teaser" onClick={() => onKindChange("pdf")}>
+          <span><FilePdf size={22} weight="duotone" /></span>
+          <div><small>PRODUCT DECK ATTACHED</small><strong>Explore the complete product presentation</strong></div>
+          <ArrowRight size={19} />
+        </button>
+      )}
       <div className="os-request-tabs" role="tablist" aria-label="Request type">
         <button role="tab" aria-selected={kind === "demo"} className={kind === "demo" ? "active" : ""} onClick={() => onKindChange("demo")}>Request Demo</button>
-        <button role="tab" aria-selected={kind === "pdf"} className={kind === "pdf" ? "active" : ""} onClick={() => onKindChange("pdf")}>Request PDF</button>
+        <button role="tab" aria-selected={kind === "pdf"} className={kind === "pdf" ? "active" : ""} onClick={() => onKindChange("pdf")}>{product.pdfUrl ? "View Product Deck" : "Request PDF"}</button>
       </div>
-      <LeadRequestForm key={`${product.id}-${kind}`} product={product} kind={kind} />
+      {kind === "pdf" && product.pdfUrl && deckUnlocked ? (
+        <ProductDeckViewer product={product} />
+      ) : (
+        <LeadRequestForm key={`${product.id}-${kind}`} product={product} kind={kind} onDeckUnlocked={() => setDeckUnlocked(true)} />
+      )}
     </aside>
   );
 }
 
-function LeadRequestForm({ product, kind }: { product: Product; kind: RequestKind }) {
+function LeadRequestForm({ product, kind, onDeckUnlocked }: { product: Product; kind: RequestKind; onDeckUnlocked?: () => void }) {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [submitted, setSubmitted] = useState(false);
@@ -444,6 +466,7 @@ function LeadRequestForm({ product, kind }: { product: Product; kind: RequestKin
       const payload = await response.json() as { error?: string };
       if (!response.ok) throw new Error(payload.error || "Unable to submit your request.");
       setSubmitted(true);
+      if (kind === "pdf" && product.pdfUrl) onDeckUnlocked?.();
     } catch (submissionError) {
       setError(submissionError instanceof Error ? submissionError.message : "Please check your details and try again.");
     } finally {
@@ -457,7 +480,7 @@ function LeadRequestForm({ product, kind }: { product: Product; kind: RequestKin
         <CheckCircle size={38} weight="fill" />
         <h3>{kind === "demo" ? "Demo request received" : "Your PDF is ready"}</h3>
         <p>{kind === "demo" ? "Our product team has your preferred date and will confirm the session by email." : "Your request is saved in the MYTM backoffice."}</p>
-        {kind === "pdf" && product.pdfUrl ? <a href={product.pdfUrl} target="_blank" rel="noreferrer"><FilePdf size={19} /> Open product PDF</a> : null}
+        {kind === "pdf" && product.pdfUrl ? <a href={product.pdfUrl} target="_blank" rel="noreferrer"><FilePdf size={19} /> Open product deck</a> : null}
       </div>
     );
   }
@@ -476,6 +499,38 @@ function LeadRequestForm({ product, kind }: { product: Product; kind: RequestKin
       <button className="os-submit" disabled={saving}>{saving ? "Submitting…" : "Submit request"}</button>
       <small>By submitting, you agree that MYTM may contact you about this request.</small>
     </form>
+  );
+}
+
+function ProductDeckViewer({ product }: { product: Product }) {
+  const format = productDeckFormat(product.pdfUrl);
+  const formatLabel = format === "pdf" ? "PDF presentation" : format === "powerpoint" ? "PowerPoint presentation" : "Product presentation";
+
+  return (
+    <section className={`os-deck-viewer ${format}`} aria-label={`${productDisplayName(product)} product deck`}>
+      <header>
+        <div><span><CheckCircle size={15} weight="fill" /> ACCESS READY</span><h3>{productDisplayName(product)} deck</h3><p>{formatLabel}</p></div>
+        <a href={product.pdfUrl} target="_blank" rel="noreferrer" aria-label={`Open ${productDisplayName(product)} deck in a new tab`}>Open ↗</a>
+      </header>
+      {format === "pdf" ? (
+        <div className="os-deck-frame">
+          <iframe src={product.pdfUrl} title={`${productDisplayName(product)} product deck`} />
+        </div>
+      ) : (
+        <div className="os-deck-file-card">
+          <img src={productImage(product)} alt="" />
+          <div className="os-deck-file-scrim" />
+          <div className="os-deck-file-copy">
+            <span><FilePdf size={24} weight="duotone" /></span>
+            <small>{format === "powerpoint" ? "PPT / PPTX" : "PRODUCT DECK"}</small>
+            <h3>Continue through the full presentation</h3>
+            <p>PowerPoint decks open in a dedicated viewer for a clear, full-screen reading experience.</p>
+            <a href={product.pdfUrl} target="_blank" rel="noreferrer">Open product deck <ArrowRight size={17} /></a>
+          </div>
+        </div>
+      )}
+      <footer><CheckCircle size={15} weight="fill" /><span>{product.requireLead ? "Your access request has been saved in the MYTM backoffice." : "This product deck is available for immediate viewing."}</span></footer>
+    </section>
   );
 }
 
