@@ -110,3 +110,17 @@ test("provides full lead management and filtered analytics in the backoffice", a
   assert.match(dashboard, /Top product and service interests/);
   assert.match(dashboard, /What prospects request/);
 });
+
+test("lets admins upload and attach product decks from the editor", async () => {
+  const [admin, mediaRoute] = await Promise.all([
+    readFile(new URL("../app/admin/AdminClient.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/api/media/route.ts", import.meta.url), "utf8"),
+  ]);
+
+  assert.match(admin, /function DeckUploadField/);
+  assert.match(admin, /Choose deck from computer/);
+  assert.match(admin, /accept="application\/pdf,.pdf,.ppt,.pptx/);
+  assert.match(admin, /Replace with another file/);
+  assert.match(mediaRoute, /allowedExtensions/);
+  assert.match(mediaRoute, /Files must be smaller than 95 MB/);
+});
